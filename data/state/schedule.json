@@ -1,5 +1,5 @@
 {
- "fetched": "2026-11-25T14:31:41.375Z",
+ "fetched": "2026-11-25T16:06:17.866Z",
  "from": "2026-11-22",
  "to": "2026-12-14",
  "items": [
@@ -41,6 +41,13 @@
   },
   {
    "date": "2026-11-25",
+   "release": "New Residential Construction",
+   "ids": [
+    "building_permits"
+   ]
+  },
+  {
+   "date": "2026-11-25",
    "release": "Personal Income and Outlays",
    "ids": [
     "real_income_ex_transfers",
@@ -59,13 +66,6 @@
    "release": "Unemployment Insurance Weekly Claims Report",
    "ids": [
     "initial_claims"
-   ]
-  },
-  {
-   "date": "2026-11-25",
-   "release": "New Residential Construction",
-   "ids": [
-    "building_permits"
    ]
   },
   {
