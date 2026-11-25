@@ -1,86 +1,86 @@
 {
  "yield_curve_10y3m": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "building_permits": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "philly_fed_mfg": {
-  "obs": "2026-11",
+  "obs": "2026-11-01",
   "seen": null
  },
  "consumer_sentiment": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "mfg_weekly_hours": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "nonfarm_payrolls": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "sahm_rule": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "industrial_production": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "real_income_ex_transfers": {
-  "obs": "2026-09",
+  "obs": "2026-09-01",
   "seen": null
  },
  "real_mfg_trade_sales": {
-  "obs": "2026-08",
+  "obs": "2026-08-01",
   "seen": null
  },
  "unemployment_rate": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "unemployment_duration": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "ci_loans": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "core_pce": {
-  "obs": "2026-09",
+  "obs": "2026-09-01",
   "seen": null
  },
  "cpi": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "infl_expect_michigan": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "wti_oil": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "real_m2": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": "2026-11-25"
  },
  "fed_funds": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "baa_spread": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "lending_standards": {
-  "obs": "2026-10",
+  "obs": "2026-10-01",
   "seen": null
  },
  "cape": {
@@ -88,7 +88,27 @@
   "seen": null
  },
  "mcap_gdp": {
-  "obs": "2026-04",
+  "obs": "2026-04-01",
+  "seen": null
+ },
+ "initial_claims": {
+  "obs": "2026-11-14",
+  "seen": null
+ },
+ "nfci": {
+  "obs": "2026-11-13",
+  "seen": null
+ },
+ "fed_net_liquidity": {
+  "obs": "2026-11-18",
+  "seen": null
+ },
+ "reserve_balances": {
+  "obs": "2026-11-18",
+  "seen": null
+ },
+ "bank_credit": {
+  "obs": "2026-11-11",
   "seen": null
  }
 }
