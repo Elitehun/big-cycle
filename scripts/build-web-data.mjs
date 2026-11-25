@@ -161,7 +161,7 @@ async function main() {
   const need = new Map();   // 시리즈 ID -> 꼭 필요한가
   for (const ind of config.indicators) for (const id of ind.calc.ids) need.set(id, need.get(id) || ind.role !== "display");
   for (const id of ["USREC", "NASDAQCOM"]) need.set(id, true);
-  for (const id of ["NCBEILQ027S", "GDP", "VIXCLS"]) if (!need.has(id)) need.set(id, false);
+  for (const id of ["NCBEILQ027S", "GDP", "VIXCLS", "SP500"]) if (!need.has(id)) need.set(id, false);
   console.log(`시리즈 ${need.size}개를 준비합니다${REFRESH ? "(전부 새로 받음)" : "(받아둔 자료 우선)"}.`);
   const raw = {};
   for (const [id, required] of need) { const obs = await getSeries(id, apiKey, required); if (obs) raw[id] = obs; }
@@ -246,7 +246,35 @@ async function main() {
       score: cut(sc, r1), latest: { value: r2(arr[li]), ...whenOf(info, li), prevValue: info && info.m0 !== null && info.m0 - M0 >= 0 && arr[info.m0 - M0] != null ? r2(arr[info.m0 - M0]) : null, unit }, start: ymStr(M0 + fi),
       pctFull: r1(pctFull[li]), pct20: r1(pct20[li]), note: "" });
   };
-  if (shiller) addPrice("cape", "실러 PER", "가격 수준", toArray(shiller.cape, M0, M1, 3), "배", [], "로버트 실러 교수 공개 자료", "CAPE", (() => { const ks = [...shiller.cape.keys()].sort((a, b) => a - b); return { m1: ks[ks.length - 1], m0: ks.length > 1 ? ks[ks.length - 2] : null, freq: "M", partial: false }; })());
+  // 실러 PER: 실러 파일의 마지막 달 뒤로는 S&P500(FRED, 월평균)이 움직인 만큼 따라 움직이게 해서 추정한다.
+  // 10년 평균 이익은 몇 달 사이 거의 변하지 않는다고 보고 주가 변화만 반영한다. 실러 파일을 새로 넣으면 기준점이 바로잡힌다.
+  let capeEst = null, spExt = null;
+  if (shiller) {
+    const ks = [...shiller.cape.keys()].sort((a, b) => a - b), mL = ks[ks.length - 1];
+    const capeMap = new Map(shiller.cape), sp = monthly.SP500;
+    let info = { m1: mL, m0: ks.length > 1 ? ks[ks.length - 2] : null, freq: "M", partial: false };
+    // 기준: 실러 파일 마지막 줄의 "PER ÷ 주가". 실러의 주가와 FRED의 SP500은 같은 지수다.
+    // 실러 파일의 마지막 달은 그 달 중간에 찍은 값일 수 있으므로, 그 달도 FRED 월평균과 0.1% 넘게 다르면 다시 계산한다.
+    const pL = shiller.price.get(mL), cL = shiller.cape.get(mL);
+    if (sp && pL > 0) {
+      let last = null;
+      spExt = new Map(shiller.price);
+      for (let m = mL; m <= M1; m++) {
+        const v = sp.get(m);
+        if (!Number.isFinite(v) || v <= 0) continue;
+        if (m === mL && Math.abs(v / pL - 1) <= 0.001) continue;
+        capeMap.set(m, cL * v / pL); spExt.set(m, v); last = m;
+      }
+      if (last !== null) {
+        const si = seriesInfo("SP500");
+        info = { m1: last, m0: last - 1, freq: "D", partial: last === genMonth, daily: true, lastDate: si.lastDate };
+        capeEst = { baseMonth: ymStr(mL), baseValue: r2(cL), basePrice: r2(pL), months: last - mL };
+      } else spExt = null;
+    } else if (!sp) notes.push("S&P500(FRED) 자료가 없어 실러 PER을 추정하지 못함: 실러 파일의 마지막 값을 그대로 씀");
+    else notes.push("실러 파일 마지막 줄에 주가가 없어 실러 PER을 추정하지 못함");
+    addPrice("cape", "실러 PER", "가격 수준", toArray(capeMap, M0, M1, 3), "배", capeEst ? ["SP500"] : [], capeEst ? "로버트 실러 교수 공개 자료 + S&P500(FRED)으로 추정" : "로버트 실러 교수 공개 자료", "CAPE", info);
+    if (capeEst) { const c = priceInds[priceInds.length - 1]; c.latest.est = true; c.est = capeEst; }
+  }
   if (arrays.NCBEILQ027S && arrays.GDP) {
     const eq = toArray(monthly.NCBEILQ027S, M0, M1, 5), gdp = toArray(monthly.GDP, M0, M1, 5);
     addPrice("mcap_gdp", "시가총액/GDP", "가격 수준", eq.map((v, i) => (v !== null && gdp[i] ? v / 1000 / gdp[i] : null)), "배", ["NCBEILQ027S", "GDP"], "FRED", "NCBEILQ027S / 1000 / GDP", realInfo(["NCBEILQ027S", "GDP"]));
@@ -340,11 +368,11 @@ async function main() {
 
   // 9. 가격과 묶음 쓰기
   const nasdaq = cut(toArray(monthly.NASDAQCOM, M0, M1, 1), r2);
-  const sp500 = shiller ? cut(toArray(shiller.price, M0, M1, 1), r2) : null;
+  const sp500 = shiller ? cut(toArray(spExt ?? shiller.price, M0, M1, 1), r2) : null;
   const data = {
     generated: new Date().toISOString(), configVersion: config.version, start: ymStr(M0 + S0), months: N, backtestStartIndex: bt0,
     rules: { threshold: TH, minMonths: MIN, window: W, newDays: 7 },
-    prices: { nasdaq, sp500 }, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
+    prices: { nasdaq, sp500 }, capeEst, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
     indicators: [...indicators, ...priceInds], groupNow, alert, nfci, sector, ai, schedule, forecasts, notes,
   };
   await writeFile(OUT_FILE, "// 자동 생성 파일. 직접 고치지 않는다. 만든 시각: " + data.generated + "\nwindow.BC_DATA = " + JSON.stringify(data) + ";\n", "utf8");

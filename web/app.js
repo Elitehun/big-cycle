@@ -69,7 +69,7 @@
       var p = lead.pctFull, hot = p !== null && p >= 90;
       var where = p === null ? "자료 부족" : p >= 50 ? "역사상 상위 " + Math.max(1, Math.round(100 - p)) + "%" : "역사상 하위 " + Math.max(1, Math.round(p)) + "%";
       html += '<div class="tile"><h2>가격 수준</h2><p class="big"' + (hot ? ' style="color:' + AMBER + '"' : "") + ">" + where + "</p>" +
-        '<p class="sub">' + (cape ? '실러 PER <span class="mono">' + fmt(cape.latest.value, 2) + "배</span>" : "") + (cape && mcap ? " · " : "") + (mcap ? '시가총액/GDP <span class="mono">' + fmt(mcap.latest.value, 2) + "배</span>" : "") + "</p>" +
+        '<p class="sub">' + (cape ? '실러 PER <span class="mono">' + fmt(cape.latest.value, 2) + "배</span>" + (cape.latest.est ? "(추정)" : "") : "") + (cape && mcap ? " · " : "") + (mcap ? '시가총액/GDP <span class="mono">' + fmt(mcap.latest.value, 2) + "배</span>" : "") + "</p>" +
         '<p class="rec">과거 성적: 비쌌던 달과 쌌던 달의 이후 1년 수익률 차이는 1%p 미만(검증 기록).</p></div>';
     } else html += '<div class="tile"><h2>가격 수준</h2><p class="big">자료 없음</p><p class="sub">실러 자료와 시가총액 자료가 없습니다</p><p class="rec">data/manual/shiller.csv 를 준비하면 표시됩니다.</p></div>';
 
@@ -93,7 +93,7 @@
     }
     $("tiles").className = "tiles" + (HAS_SECTOR || HAS_AI ? "" : " n3");
     $("tiles").innerHTML = html;
-    $("src-line").textContent = "출처: 미국 연준 계열 통계(FRED), 로버트 실러 교수 공개 자료(실러 PER, S&P500 장기 가격)" + (HAS_AI ? ", 미국 증권거래위원회(SEC) 공시 자료(AI 투자 사이클)" : "") + (HAS_SECTOR ? ", CDS는 수동 입력." : ".");
+    $("src-line").textContent = "출처: 미국 연준 계열 통계(FRED), 로버트 실러 교수 공개 자료(실러 PER, S&P500 장기 가격" + (D.capeEst ? ". 실러 PER의 최근 값은 S&P500 변화로 추정" : "") + ")" + (HAS_AI ? ", 미국 증권거래위원회(SEC) 공시 자료(AI 투자 사이클)" : "") + (HAS_SECTOR ? ", CDS는 수동 입력." : ".");
   }
 
   // ---------- 지표 목록 ----------
@@ -166,6 +166,7 @@
       shown = fmt(x.latest.value, 2) + (x.latest.unit || "");
       var top = function (p) { return p === null || p === undefined ? "자료 부족" : p >= 50 ? "상위 " + Math.max(1, Math.round(100 - p)) + "%" : "하위 " + Math.max(1, Math.round(p)) + "%"; };
       meta.push(esc(whenLabel(x.latest)) + " · 전체 역사 " + top(x.pctFull) + " · 최근 20년 " + top(x.pct20));
+      if (x.est) meta.push("추정값: 실러 자료의 마지막 값(" + esc(whenLabel({ month: x.est.baseMonth, freq: "M" }).replace(/치$/, "")) + ", " + fmt(x.est.baseValue, 2) + "배)에 그 뒤 S&P500 변화를 반영");
       hot = x.pctFull !== null && x.pctFull >= 90;
     } else if (x.score) {
       var v = cur.v === null ? null : isInfl ? 100 - cur.v : cur.v;
@@ -300,7 +301,7 @@
     px = D.prices[state.chart];
     var isN = state.chart === "nasdaq";
     $("chart-title").textContent = (isN ? "나스닥 종합지수" : "S&P500") + " · " + monthStr(BT0).slice(0, 4) + "~" + monthStr(LAST).slice(0, 4);
-    $("chart-source").textContent = isN ? "출처: FRED (NASDAQCOM), 월평균 · 로그 눈금" : "출처: 로버트 실러 교수 공개 자료, 월평균 · 로그 눈금";
+    $("chart-source").textContent = isN ? "출처: FRED (NASDAQCOM), 월평균 · 로그 눈금" : "출처: 로버트 실러 교수 공개 자료" + (D.capeEst ? ", 최근 달은 FRED (SP500)" : "") + ", 월평균 · 로그 눈금";
     $("btn-nasdaq").setAttribute("aria-pressed", String(isN));
     $("btn-sp500").setAttribute("aria-pressed", String(!isN));
     $("btn-sp500").disabled = !D.prices.sp500;
