@@ -162,5 +162,9 @@
  "SP500": {
   "id": 189,
   "name": "Standard & Poors"
+ },
+ "MTSDS133FMS": {
+  "id": 363,
+  "name": "Monthly Treasury Statement"
  }
 }

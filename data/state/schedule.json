@@ -1,5 +1,5 @@
 {
- "fetched": "2026-11-25T13:09:45.157Z",
+ "fetched": "2026-11-25T14:16:22.774Z",
  "from": "2026-11-22",
  "to": "2026-12-14",
  "items": [
@@ -35,14 +35,8 @@
    "date": "2026-11-25",
    "release": "Gross Domestic Product",
    "ids": [
+    "fiscal_deficit",
     "mcap_gdp"
-   ]
-  },
-  {
-   "date": "2026-11-25",
-   "release": "New Residential Construction",
-   "ids": [
-    "building_permits"
    ]
   },
   {
@@ -65,6 +59,13 @@
    "release": "Unemployment Insurance Weekly Claims Report",
    "ids": [
     "initial_claims"
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "release": "New Residential Construction",
+   "ids": [
+    "building_permits"
    ]
   },
   {
@@ -151,6 +152,13 @@
    "ids": [
     "fed_net_liquidity",
     "reserve_balances"
+   ]
+  },
+  {
+   "date": "2026-12-10",
+   "release": "Monthly Treasury Statement",
+   "ids": [
+    "fiscal_deficit"
    ]
   },
   {

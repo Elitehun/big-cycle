@@ -32,12 +32,12 @@
   "seen": null
  },
  "real_income_ex_transfers": {
-  "obs": "2026-09-01",
-  "seen": null
+  "obs": "2026-10-01",
+  "seen": "2026-11-25"
  },
  "real_mfg_trade_sales": {
-  "obs": "2026-08-01",
-  "seen": null
+  "obs": "2026-09-01",
+  "seen": "2026-11-25"
  },
  "unemployment_rate": {
   "obs": "2026-10-01",
@@ -52,8 +52,8 @@
   "seen": null
  },
  "core_pce": {
-  "obs": "2026-09-01",
-  "seen": null
+  "obs": "2026-10-01",
+  "seen": "2026-11-25"
  },
  "cpi": {
   "obs": "2026-10-01",
@@ -92,12 +92,12 @@
   "seen": null
  },
  "initial_claims": {
-  "obs": "2026-11-14",
-  "seen": null
+  "obs": "2026-11-21",
+  "seen": "2026-11-25"
  },
  "nfci": {
-  "obs": "2026-11-13",
-  "seen": null
+  "obs": "2026-11-20",
+  "seen": "2026-11-25"
  },
  "fed_net_liquidity": {
   "obs": "2026-11-18",
@@ -109,6 +109,10 @@
  },
  "bank_credit": {
   "obs": "2026-11-11",
+  "seen": null
+ },
+ "fiscal_deficit": {
+  "obs": "2026-10-01",
   "seen": null
  }
 }
