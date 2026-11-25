@@ -340,6 +340,43 @@ async function main() {
     nfci = { value: r2(a[i]), month: ymStr(M0 + S0 + i), easing: dir[i], record: { hits: rec.hits, eligible: rec.eligible, falseSignals: rec.falseSignals, counted: rec.counted, onShare: r1(rec.onShare === null ? null : rec.onShare * 100) } };
   }
 
+  // 7-2. 사이클 위치: 경기(표준 선행) × 유동성(표준 유동성) 사분면, 기준금리 국면
+  let quad = null;
+  {
+    const liqStd = std.filter((i) => i.category === "유동성 지표");
+    const comp = (list) => E.composite(list.map((i) => ({ score: fullScores[i.id].slice(S0), stars: i.stars })), N).value;
+    const RATE_IDS = ["FEDFUNDS", "DGS10"];
+    const econ = leadComp.value, liq = liqStd.length ? comp(liqStd) : null;
+    const liqNR = comp(liqStd.filter((i) => !i.calc.ids.some((id) => RATE_IDS.includes(id))));
+    const rate = arrays.FEDFUNDS ? arrays.FEDFUNDS.slice(S0) : null;
+    if (liq && rate && arrays.NASDAQCOM) {
+      const CUT = 50, LB = 6, STEP = 0.25;   // 칸 경계는 50점(역사적 중간). 금리 국면은 6개월 전보다 0.25%p 이상 움직였는가
+      const phase = rate.map((v, i) => { const b = i >= LB ? rate[i - LB] : null; if (v === null || b === null || b === undefined) return null; const d = v - b; return d >= STEP ? 1 : d <= -STEP ? -1 : 0; });
+      const NAMES = ["실적장세", "금융장세", "역금융장세", "역실적장세"];
+      const qOf = (L) => (i) => (econ[i] === null || L[i] === null ? null : econ[i] >= CUT ? (L[i] >= CUT ? 0 : 2) : (L[i] >= CUT ? 1 : 3));
+      const q = qOf(liq), qNR = qOf(liqNR);
+      const fwd = E.forward(toArray(monthly.NASDAQCOM, M0, M1, 1).slice(S0), 12);
+      let valid = 0; for (let i = bt0; i <= lastIdx; i++) if (q(i) !== null) valid++;
+      const pack = (mask) => { const st = E.fwdStats(mask, fwd, bt0, lastIdx); let c = 0; for (let i = bt0; i <= lastIdx; i++) if (mask(i)) c++;
+        return { months: c, share: valid ? r1(c / valid * 100) : null, n: st.n, mean: st.mean === null ? null : r1(st.mean * 100), neg: st.neg === null ? null : r1(st.neg * 100), dd: st.dd === null ? null : r1(st.dd * 100) }; };
+      const stats = NAMES.map((name, k) => ({ name, ...pack((i) => q(i) === k) }));
+      const statsNoRate = NAMES.map((name, k) => ({ name, ...pack((i) => qNR(i) === k) }));
+      let same = 0, both = 0; for (let i = bt0; i <= lastIdx; i++) { const a = q(i), b = qNR(i); if (a !== null && b !== null) { both++; if (a === b) same++; } }
+      const phaseStats = [[1, "인상기"], [0, "동결기"], [-1, "인하기"]].map(([k, name]) => ({ name, ...pack((i) => phase[i] === k && q(i) !== null) }));
+      const combo = [
+        { name: "경기 나쁨 + 인하기", ...pack((i) => econ[i] !== null && econ[i] < CUT && phase[i] === -1) },
+        { name: "경기 나쁨 + 인상·동결기", ...pack((i) => econ[i] !== null && econ[i] < CUT && phase[i] !== null && phase[i] >= 0) },
+        { name: "경기 좋음 + 인하기", ...pack((i) => econ[i] !== null && econ[i] >= CUT && phase[i] === -1) },
+        { name: "경기 좋음 + 인상·동결기", ...pack((i) => econ[i] !== null && econ[i] >= CUT && phase[i] !== null && phase[i] >= 0) } ];
+      const cases = ["2001-03", "2008-09", "2020-04", "2023-01"].map((m) => { const i = ym(m) - M0 - S0, k = i >= 0 && i <= lastIdx ? q(i) : null;
+        return { month: m, q: k === null ? null : NAMES[k], econ: i >= 0 ? r1(econ[i]) : null, liq: i >= 0 ? r1(liq[i]) : null, rate: i >= 0 ? r2(rate[i]) : null, phase: i >= 0 ? phase[i] : null, ret: i >= 0 && fwd.ret[i] !== null ? r1(fwd.ret[i] * 100) : null }; });
+      let li2 = lastIdx; while (li2 >= 0 && q(li2) === null) li2--;
+      quad = { cut: CUT, lookback: LB, step: STEP, names: NAMES, econ: econ.map(r1), liq: liq.map(r1), rate: rate.map(r2), phase,
+        now: li2 >= 0 ? { index: li2, month: ymStr(M0 + S0 + li2), q: NAMES[q(li2)], econ: r1(econ[li2]), liq: r1(liq[li2]), liqNoRate: r1(liqNR[li2]), qNoRate: qNR(li2) === null ? null : NAMES[qNR(li2)], rate: r2(rate[li2]), phase: phase[li2] } : null,
+        liqMembers: liqStd.map((i) => i.name), stats, statsNoRate, agree: both ? r1(same / both * 100) : null, phaseStats, combo, cases };
+    } else notes.push("사이클 위치 차트: 유동성 점수·기준금리·나스닥 자료 중 빠진 것이 있어 만들지 못함");
+  }
+
   // 8. 주도 섹터 CDS (수동 입력)
   let sector = null;
   if (WITH_CDS) {
@@ -372,7 +409,7 @@ async function main() {
   const data = {
     generated: new Date().toISOString(), configVersion: config.version, start: ymStr(M0 + S0), months: N, backtestStartIndex: bt0,
     rules: { threshold: TH, minMonths: MIN, window: W, newDays: 7 },
-    prices: { nasdaq, sp500 }, capeEst, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
+    prices: { nasdaq, sp500 }, capeEst, quad, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
     indicators: [...indicators, ...priceInds], groupNow, alert, nfci, sector, ai, schedule, forecasts, notes,
   };
   await writeFile(OUT_FILE, "// 자동 생성 파일. 직접 고치지 않는다. 만든 시각: " + data.generated + "\nwindow.BC_DATA = " + JSON.stringify(data) + ";\n", "utf8");
@@ -381,6 +418,10 @@ async function main() {
   console.log(`\n완료. web/data.js (${kb}KB) 를 만들었습니다. web/index.html 을 브라우저로 여세요.`);
   console.log(`기간 ${data.start} ~ ${ymStr(M0 + S0 + lastIdx)}, 지표 ${data.indicators.length}개, 침체 ${recs.filter(([s]) => s >= bt0).length}회(${rules.backtest_start} 이후)`);
   console.log(`침체 경보: ${alert.on ? "켜짐" : "꺼짐"} (선행 종합 ${alert.score}) / 성적 ${alert.record.hits}/${alert.record.eligible}, 헛경보 ${alert.record.falseSignals}/${alert.record.counted}`);
+  if (quad && quad.now) {
+    console.log(`사이클 위치(${quad.now.month}): ${quad.now.q} · 경기 ${quad.now.econ} · 유동성 ${quad.now.liq} · 기준금리 ${quad.now.rate}% (${quad.now.phase === 1 ? "인상기" : quad.now.phase === -1 ? "인하기" : "동결기"})`);
+    for (const x of quad.stats) console.log(`  ${x.name}: 기간 ${x.share}% · 이후 1년 나스닥 평균 ${x.mean}% · 손실 확률 ${x.neg}% (${x.n}개월)`);
+  }
   if (notes.length) { console.log("\n알림:"); for (const x of notes) console.log("  - " + x); }
 }
 

@@ -48,6 +48,7 @@
       if (saved.panelOpen === false) state.panelOpen = false;
       if (!(AI_CAT in state.open)) { state.open[AI_CAT] = true; state.open[AI_CAT + "/번 돈 대비 투자"] = true; }
       if (saved.boardAll) state.boardAll = true;
+      if ([24, 48, 120].indexOf(saved.quadRange) >= 0) state.quadRange = saved.quadRange;
       if (saved.boardOpen && typeof saved.boardOpen === "object") state.boardOpen = saved.boardOpen;
     }
   } catch (e) { /* 저장소를 못 쓰는 환경이면 기억하지 않는다 */ }
@@ -512,7 +513,83 @@
       cell("경보 켜짐일 때 이후 1년 " + mkt, pct(on.mean), on.n ? on.n + "개월 평균 · 손실로 끝난 비율 " + pct(on.neg, 0) : "경보가 켜진 달이 없습니다");
   }
 
-  function renderAll() { renderBoard(); renderTiles(); renderNews(); renderList(); renderChart(); renderRecord(); }
+  // ---------- 사이클 위치: 경기 × 유동성 사분면과 기준금리 ----------
+  var Q = D.quad, PH_COLOR = { "1": AMBER, "0": "#A9AFBA", "-1": "#8FC4FF" }, PH_NAME = { "1": "인상기", "0": "동결기", "-1": "인하기" };
+  var ymKo = function (m) { return m.slice(0, 4) + "년 " + Number(m.slice(5, 7)) + "월"; };
+  var pct = function (v) { return v === null || v === undefined ? "—" : (v > 0 ? "+" : "") + fmt(v, 1) + "%"; };
+  function quadReadout(i) {
+    var k = Q.econ[i] >= Q.cut ? (Q.liq[i] >= Q.cut ? 0 : 2) : (Q.liq[i] >= Q.cut ? 1 : 3), ph = Q.phase[i];
+    $("quad-readout").innerHTML = (i === Q.now.index ? "지금 · " : "") + esc(ymKo(monthStr(i))) + " · <strong>" + esc(Q.names[k]) + '</strong> · 경기 <span class="mono">' + fmt(Q.econ[i], 1) + '</span> · 유동성 <span class="mono">' + fmt(Q.liq[i], 1) +
+      '</span> · 기준금리 <span class="mono">' + fmt(Q.rate[i], 2) + "%</span>" + (ph === null || ph === undefined ? "" : " (" + PH_NAME[String(ph)] + ")");
+    var mk = document.getElementById("qrate-mark"); if (mk && mk.dataset.x0) { var x = Number(mk.dataset.x0) + (i - Number(mk.dataset.i0)) * Number(mk.dataset.dx); mk.setAttribute("x1", x); mk.setAttribute("x2", x); }
+    Array.prototype.forEach.call(document.querySelectorAll("#quad circle[data-dot]"), function (c) { c.setAttribute("stroke", Number(c.getAttribute("data-dot")) === i ? "#F2F3F5" : "none"); });
+  }
+  function renderQuad() {
+    if (!Q || !Q.now) return;
+    $("quad-card").hidden = false;
+    var span = Number(state.quadRange) || 48, end = Q.now.index, idx = [];
+    for (var i = Math.max(0, end - span + 1); i <= end; i++) if (Q.econ[i] !== null && Q.liq[i] !== null) idx.push(i);
+    if (!idx.length) return;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-qrange]"), function (b) { b.setAttribute("aria-pressed", String(Number(b.getAttribute("data-qrange")) === span)); });
+    $("quad-sub").textContent = "가로: 경기(표준 선행 종합 점수) · 세로: 유동성(표준 유동성 종합 점수) · 경계 " + Q.cut + "점 · " + ymKo(monthStr(idx[0])) + "~" + ymKo(monthStr(end));
+    var host = $("quad"), W = Math.max(300, Math.round(host.clientWidth || 860)), small = W < 560, H = Math.round(Math.min(560, Math.max(320, W * (small ? 0.9 : 0.6))));
+    var L = small ? 34 : 46, R = 14, T = 12, B = small ? 34 : 40, pw = W - L - R, ph = H - T - B;
+    var X = function (v) { return L + v / 100 * pw; }, Y = function (v) { return T + (100 - v) / 100 * ph; };
+    var s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="경기와 유동성 점수로 본 사이클 위치. 최근 ' + span + '개월의 이동 경로.">';
+    s += '<rect x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph + '" fill="#0A0B0D" stroke="#23262D"></rect>';
+    s += '<line x1="' + X(Q.cut) + '" y1="' + T + '" x2="' + X(Q.cut) + '" y2="' + (T + ph) + '" stroke="#3A3F49"></line><line x1="' + L + '" y1="' + Y(Q.cut) + '" x2="' + (L + pw) + '" y2="' + Y(Q.cut) + '" stroke="#3A3F49"></line>';
+    var fs = small ? 12 : 14, lab = function (x, y, anchor, t1, t2) { return '<text x="' + x + '" y="' + y + '" text-anchor="' + anchor + '" font-size="' + fs + '" font-weight="700" fill="#A9AFBA">' + t1 + '</text><text x="' + x + '" y="' + (y + fs + 3) + '" text-anchor="' + anchor + '" font-size="' + (fs - 2) + '" fill="#6F7682">' + t2 + "</text>"; };
+    s += lab(L + 10, T + fs + 6, "start", "금융장세", "경기 나쁨 · 돈 풍부") + lab(L + pw - 10, T + fs + 6, "end", "실적장세", "경기 좋음 · 돈 풍부") +
+      lab(L + 10, T + ph - fs - 8, "start", "역실적장세", "경기 나쁨 · 돈 긴축") + lab(L + pw - 10, T + ph - fs - 8, "end", "역금융장세", "경기 좋음 · 돈 긴축");
+    [0, 25, 50, 75, 100].forEach(function (v) {
+      s += '<text x="' + X(v) + '" y="' + (T + ph + 16) + '" text-anchor="middle" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + v + '</text><text x="' + (L - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + v + "</text>";
+    });
+    s += '<text x="' + (L + pw) + '" y="' + (H - 4) + '" text-anchor="end" font-size="11" fill="#A9AFBA">경기 점수 →</text><text x="' + L + '" y="' + (H - 4) + '" font-size="11" fill="#A9AFBA">세로: 유동성 점수</text>';
+    var n = idx.length, op = function (k) { return n < 2 ? 1 : 0.18 + 0.82 * Math.pow(k / (n - 1), 1.6); }, col = function (i) { var p = Q.phase[i]; return PH_COLOR[String(p === null || p === undefined ? 0 : p)]; };
+    for (var k = 1; k < n; k++) { var a = idx[k - 1], b = idx[k];
+      s += '<line x1="' + X(Q.econ[a]).toFixed(1) + '" y1="' + Y(Q.liq[a]).toFixed(1) + '" x2="' + X(Q.econ[b]).toFixed(1) + '" y2="' + Y(Q.liq[b]).toFixed(1) + '" stroke="' + col(b) + '" stroke-width="' + (small ? 1.6 : 2) + '" stroke-linecap="round" opacity="' + op(k).toFixed(2) + '"></line>'; }
+    for (k = 0; k < n; k++) { var i2 = idx[k], cx = X(Q.econ[i2]).toFixed(1), cy = Y(Q.liq[i2]).toFixed(1), isNow = i2 === end, jan = monthStr(i2).slice(5) === "01";
+      s += '<circle data-dot="' + i2 + '" cx="' + cx + '" cy="' + cy + '" r="' + (isNow ? 7 : jan ? 4 : 2.5) + '" fill="' + col(i2) + '" opacity="' + (isNow ? 1 : op(k).toFixed(2)) + '" stroke="' + (isNow ? "#F2F3F5" : "none") + '" stroke-width="2"></circle>';
+      if (jan && !isNow) s += '<text x="' + cx + '" y="' + (Number(cy) - 8) + '" text-anchor="middle" font-size="11" fill="#D5D8DE" opacity="' + Math.max(0.55, op(k)).toFixed(2) + '" font-family="IBM Plex Mono, monospace">' + monthStr(i2).slice(0, 4) + "</text>"; }
+    var nx = X(Q.econ[end]), ny = Y(Q.liq[end]);
+    s += '<text x="' + (nx > L + pw - 50 ? nx - 12 : nx + 12) + '" y="' + (ny + 4) + '" text-anchor="' + (nx > L + pw - 50 ? "end" : "start") + '" font-size="13" font-weight="700" fill="#F2F3F5">지금</text>';
+    for (k = 0; k < n; k++) s += '<circle data-hit="' + idx[k] + '" cx="' + X(Q.econ[idx[k]]).toFixed(1) + '" cy="' + Y(Q.liq[idx[k]]).toFixed(1) + '" r="9" fill="transparent"></circle>';
+    host.innerHTML = s + "</svg>";
+
+    // 기준금리 띠: 같은 기간, 같은 색
+    var rh = $("quad-rate"), RH = small ? 120 : 140, rT = 10, rB = 22, i0 = idx[0], vals = [];
+    for (i = i0; i <= end; i++) if (Q.rate[i] !== null) vals.push(Q.rate[i]);
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals); if (hi - lo < 0.5) { hi += 0.25; lo -= 0.25; } var pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+    var dx = end > i0 ? pw / (end - i0) : 0, RX = function (i) { return L + (i - i0) * dx; }, RY = function (v) { return rT + (hi - v) / (hi - lo) * (RH - rT - rB); };
+    var r = '<svg viewBox="0 0 ' + W + " " + RH + '" role="img" aria-label="같은 기간의 기준금리">';
+    [hi - pad, lo + pad].forEach(function (v) { r += '<line x1="' + L + '" y1="' + RY(v) + '" x2="' + (L + pw) + '" y2="' + RY(v) + '" stroke="#1B1E24"></line><text x="' + (L - 6) + '" y="' + (RY(v) + 4) + '" text-anchor="end" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + fmt(v, 2) + "</text>"; });
+    for (i = i0; i <= end; i++) if (monthStr(i).slice(5) === "01") r += '<line x1="' + RX(i) + '" y1="' + rT + '" x2="' + RX(i) + '" y2="' + (RH - rB) + '" stroke="#1B1E24"></line><text x="' + RX(i) + '" y="' + (RH - 6) + '" text-anchor="middle" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + monthStr(i).slice(0, 4) + "</text>";
+    for (i = i0 + 1; i <= end; i++) if (Q.rate[i] !== null && Q.rate[i - 1] !== null) r += '<line x1="' + RX(i - 1).toFixed(1) + '" y1="' + RY(Q.rate[i - 1]).toFixed(1) + '" x2="' + RX(i).toFixed(1) + '" y2="' + RY(Q.rate[i]).toFixed(1) + '" stroke="' + col(i) + '" stroke-width="2.2" stroke-linecap="round"></line>';
+    r += '<line id="qrate-mark" data-x0="' + L + '" data-i0="' + i0 + '" data-dx="' + dx + '" x1="' + RX(end) + '" x2="' + RX(end) + '" y1="' + rT + '" y2="' + (RH - rB) + '" stroke="#F2F3F5" stroke-dasharray="3 3" opacity="0.7"></line>';
+    rh.innerHTML = r + "</svg>";
+    $("quad-rate-sub").textContent = "실효 연방기금금리 월평균(%) · " + Q.lookback + "개월 전보다 " + fmt(Q.step, 2) + "%p 이상 오르면 인상기, 내리면 인하기";
+    quadReadout(end);
+    Array.prototype.forEach.call(host.querySelectorAll("circle[data-hit]"), function (c) {
+      c.addEventListener("mouseenter", function () { quadReadout(Number(c.getAttribute("data-hit"))); });
+      c.addEventListener("click", function () { quadReadout(Number(c.getAttribute("data-hit"))); });
+    });
+    host.onmouseleave = function () { quadReadout(end); };
+  }
+  function renderQuadRecord() {
+    if (!Q || !Q.now) return;
+    var row = function (x, cur) { return "<tr" + (cur ? ' class="cur"' : "") + '><td>' + esc(x.name) + (cur ? " (지금)" : "") + '</td><td class="num">' + (x.share === null ? "—" : fmt(x.share, 0) + "%") + '</td><td class="num">' + pct(x.mean) + '</td><td class="num">' + (x.neg === null ? "—" : fmt(x.neg, 0) + "%") + '</td><td class="num">' + (x.n || 0) + "</td></tr>"; };
+    var head = function (t) { return '<tr><th scope="col">' + t + '</th><th scope="col" class="num">기간 비율</th><th scope="col" class="num">이후 1년 나스닥</th><th scope="col" class="num">손실 확률</th><th scope="col" class="num">개월 수</th></tr>'; };
+    var nowPh = PH_NAME[String(Q.now.phase)];
+    $("quad-table").innerHTML = "<thead>" + head("칸") + "</thead><tbody>" + Q.stats.map(function (x) { return row(x, x.name === Q.now.q); }).join("") + "</tbody>" +
+      "<thead>" + head("기준금리 국면") + "</thead><tbody>" + Q.phaseStats.map(function (x) { return row(x, x.name === nowPh); }).join("") + "</tbody>" +
+      "<thead>" + head("경기와 금리 조합") + "</thead><tbody>" + Q.combo.map(function (x) { return row(x, false); }).join("") + "</tbody>";
+    $("quad-cases").innerHTML = "과거 사례: " + Q.cases.map(function (c) { return esc(ymKo(c.month)) + " <strong>" + esc(c.q || "자료 없음") + "</strong>" + (c.ret === null ? "" : "(이후 1년 " + pct(c.ret) + ")"); }).join(" · ");
+    $("quad-note").textContent = "기간은 " + monthStr(BT0).slice(0, 4) + "년부터. 수정된 최종 자료를 썼고 발표 시차를 반영하지 않았습니다. 칸마다 평균이 달라도 우연일 수 있으며, 주식을 사고팔 신호가 아닙니다. 유동성 점수에는 금리 지표(기준금리, 10년물)가 이미 들어 있습니다. 금리를 뺀 유동성 점수로 나눠도 같은 칸이었던 달은 " + (Q.agree === null ? "—" : fmt(Q.agree, 0)) + "%입니다.";
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-qrange]"), function (b) { b.addEventListener("click", function () { state.quadRange = Number(b.getAttribute("data-qrange")); save(); renderQuad(); }); });
+  if (Q && Q.now) { if (window.ResizeObserver) new ResizeObserver(function () { renderQuad(); }).observe($("quad-card")); else window.addEventListener("resize", renderQuad); }
+
+  function renderAll() { renderBoard(); renderTiles(); renderNews(); renderList(); renderChart(); renderRecord(); renderQuad(); renderQuadRecord(); }
 
   // ---------- 이벤트 ----------
   $("list").addEventListener("click", function (ev) {
