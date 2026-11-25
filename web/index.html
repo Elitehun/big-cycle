@@ -99,12 +99,12 @@ body.panel-closed aside { opacity: 0; visibility: hidden; border-color: transpar
 .grid4 > div { background: var(--ground); padding: 14px 16px; }
 .grid4 .k { font-size: 12px; color: var(--muted); } .grid4 .v { margin-top: 6px; font-size: 17px; font-family: var(--mono); font-weight: 500; } .grid4 .n { margin-top: 4px; font-size: 12px; color: var(--muted); }
 #quad-readout { padding: 12px 20px 0; font-size: 14px; color: var(--text-2); min-height: 34px; } #quad-readout strong { color: var(--text); font-weight: 700; }
-#quad { padding: 8px 12px 0; } #quad svg, #quad-rate svg { display: block; width: 100%; height: auto; }
+#quad { padding: 8px 12px 0; } #quad svg, #quad-rate svg, #quad-fis svg { display: block; width: 100%; height: auto; }
 .qlegend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 6px 20px 14px; font-size: 12px; color: var(--text-2); }
 .qlegend i { display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; }
 .qrate-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 14px 20px 0; border-top: 1px solid var(--line); }
 .qrate-head h3, .qrec h3 { font-size: 14px; font-weight: 700; } .qrate-head p { font-size: 12px; }
-#quad-rate { padding: 4px 12px 12px; }
+#quad-rate, #quad-fis { padding: 4px 12px 12px; } #quad-fis:empty { display: none; }
 .qrec { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 20px; border-top: 1px solid var(--line); }
 #quad-table td.num, #quad-table th.num { text-align: right; font-family: var(--mono); } #quad-table tr.cur td { color: var(--accent); }
 .scroll-x { overflow-x: auto; }
@@ -227,10 +227,13 @@ details summary { cursor: pointer; min-height: 32px; }
 <p class="qlegend"><span><i style="background:#F5B841"></i>금리 인상기</span><span><i style="background:#A9AFBA"></i>동결기</span><span><i style="background:#8FC4FF"></i>인하기</span><span class="muted">오래된 달일수록 흐리게 · 점에 마우스를 올리면 그 달의 값</span></p>
 <div class="qrate-head"><h3>기준금리</h3><p class="muted" id="quad-rate-sub"></p></div>
 <div id="quad-rate"></div>
+<div class="qrate-head" id="quad-fis-head" hidden><h3>정부 재정적자 / GDP</h3><p class="muted" id="quad-fis-sub"></p></div>
+<div id="quad-fis"></div>
 <div class="qrec">
 <h3>칸별 과거 성적</h3>
 <div class="scroll-x"><table id="quad-table"></table></div>
 <p style="font-size:14px;color:var(--text-2)" id="quad-cases"></p>
+<p style="font-size:14px;color:var(--text-2)" id="quad-fiscal" hidden></p>
 <p class="muted" style="font-size:12px" id="quad-note"></p>
 </div>
 </section>

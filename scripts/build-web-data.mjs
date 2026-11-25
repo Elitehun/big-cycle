@@ -161,7 +161,7 @@ async function main() {
   const need = new Map();   // 시리즈 ID -> 꼭 필요한가
   for (const ind of config.indicators) for (const id of ind.calc.ids) need.set(id, need.get(id) || ind.role !== "display");
   for (const id of ["USREC", "NASDAQCOM"]) need.set(id, true);
-  for (const id of ["NCBEILQ027S", "GDP", "VIXCLS", "SP500"]) if (!need.has(id)) need.set(id, false);
+  for (const id of ["NCBEILQ027S", "GDP", "VIXCLS", "SP500", "MTSDS133FMS"]) if (!need.has(id)) need.set(id, false);
   console.log(`시리즈 ${need.size}개를 준비합니다${REFRESH ? "(전부 새로 받음)" : "(받아둔 자료 우선)"}.`);
   const raw = {};
   for (const [id, required] of need) { const obs = await getSeries(id, apiKey, required); if (obs) raw[id] = obs; }
@@ -262,6 +262,7 @@ async function main() {
       for (let m = mL; m <= M1; m++) {
         const v = sp.get(m);
         if (!Number.isFinite(v) || v <= 0) continue;
+        if (v / pL < 0.5 || v / pL > 2) { if (!notes.some((x) => x.startsWith("실러 PER 추정 중단"))) notes.push("실러 PER 추정 중단: S&P500(FRED)과 실러 파일의 주가 수준이 2배 넘게 달라 같은 지수로 볼 수 없음"); continue; }
         if (m === mL && Math.abs(v / pL - 1) <= 0.001) continue;
         capeMap.set(m, cL * v / pL); spExt.set(m, v); last = m;
       }
@@ -280,6 +281,24 @@ async function main() {
     addPrice("mcap_gdp", "시가총액/GDP", "가격 수준", eq.map((v, i) => (v !== null && gdp[i] ? v / 1000 / gdp[i] : null)), "배", ["NCBEILQ027S", "GDP"], "FRED", "NCBEILQ027S / 1000 / GDP", realInfo(["NCBEILQ027S", "GDP"]));
   }
   if (arrays.VIXCLS) addPrice("vix", "변동성 지수 (VIX)", "심리", toArray(monthly.VIXCLS, M0, M1, 1), "", ["VIXCLS"], "FRED", "VIXCLS", realInfo(["VIXCLS"]));
+
+  // 4-1b. 정부 재정적자/GDP: 최근 12개월 재정수지 합계 ÷ GDP. 그 달에 실제로 알 수 있던 값만 쓴다(재정수지 1개월, GDP 4개월 늦게 반영)
+  let fiscalArr = null;
+  if (monthly.MTSDS133FMS && monthly.GDP) {
+    const mts = monthly.MTSDS133FMS, gdpM = monthly.GDP;
+    const gdpAt = (m) => { for (let k = m - 4; k >= m - 16; k--) if (gdpM.has(k)) return gdpM.get(k); return null; };
+    const one = (m) => { let sum = 0; for (let k = m - 12; k <= m - 1; k++) { if (!mts.has(k)) return null; sum += mts.get(k); } const g = gdpAt(m); return g ? -sum / 1000 / g * 100 : null; };
+    fiscalArr = []; for (let i = 0; i < n; i++) fiscalArr.push(one(M0 + i));
+    const lf = lastIdxOf(fiscalArr), ff = fiscalArr.findIndex((v) => v !== null);
+    if (lf >= 0) {
+      const dataMonth = M0 + lf - 1;   // 값에 들어간 마지막 재정수지의 달
+      indicators.push({ id: "fiscal_deficit", name: "재정적자/GDP (%)", category: "유동성 지표", group: "정부", stars: null, standard: false, role: "display",
+        formula: "-(MTSDS133FMS 최근 12개월 합계) / 1000 / GDP * 100", transform: "최근 12개월 합계 ÷ GDP", series: ["MTSDS133FMS", "GDP"], source: "FRED", score: null,
+        latest: { value: r2(fiscalArr[lf]), month: ymStr(dataMonth), freq: "M", partial: false, daily: false, lastDate: seriesInfo("MTSDS133FMS").lastDate, prevMonth: ymStr(dataMonth - 1), prevValue: lf > 0 ? r2(fiscalArr[lf - 1]) : null, unit: "%" },
+        start: ymStr(M0 + ff), note: "정부가 푸는 돈. 클수록 적자가 큼(음수면 흑자). 판정 점수에는 넣지 않음" });
+      for (let i = lf + 1; i < n && i <= lf + 2; i++) fiscalArr[i] = fiscalArr[lf];   // 이번 달 재정수지가 아직 안 나왔으면 직전 값을 잠시 이어 쓴다
+    } else fiscalArr = null;
+  } else notes.push("재정적자/GDP: 재정수지(MTSDS133FMS) 자료가 없어 표시하지 않음");
 
   // 4-2. 새 발표 기록: 직전 실행 때와 비교해 자료의 달이 바뀐 지표에 오늘 날짜를 적어 둔다(매일 나오는 지표는 제외)
   const stateFile = join(ROOT, "data", "state", "releases.json");
@@ -338,6 +357,21 @@ async function main() {
     const dir = E.direction(a, false, 6, 2);
     const rec = E.recessionEval(a.map((v) => (v === null ? null : v > 0)), recs, bt0, W, lastIdx);
     nfci = { value: r2(a[i]), month: ymStr(M0 + S0 + i), easing: dir[i], record: { hits: rec.hits, eligible: rec.eligible, falseSignals: rec.falseSignals, counted: rec.counted, onShare: r1(rec.onShare === null ? null : rec.onShare * 100) } };
+  }
+
+  // 7-1. 재정적자와 경보: 경보가 켜진 달의 재정적자가 기준보다 컸는가, 그 뒤 12개월 나스닥이 올랐는가
+  let fiscal = null;
+  if (fiscalArr && arrays.NASDAQCOM) {
+    const FC = 1.5, fx = fiscalArr.slice(S0), pxq = toArray(monthly.NASDAQCOM, M0, M1, 1).slice(S0);
+    const cases = [];
+    for (const [s0] of E.episodes(leadSig)) {
+      if (s0 < bt0 || s0 + 12 > lastIdx || fx[s0] === null || !pxq[s0] || !pxq[s0 + 12]) continue;
+      cases.push({ start: ymStr(M0 + S0 + s0), deficit: r1(fx[s0]), ret: r1((pxq[s0 + 12] / pxq[s0] - 1) * 100) });
+    }
+    const up = cases.filter((c) => c.ret > 0).length, ok = cases.filter((c) => (c.deficit > FC) === (c.ret > 0));
+    const lf = lastIdxOf(fx);
+    fiscal = { cut: FC, series: fx.map(r1), now: lf >= 0 ? { index: lf, value: r1(fx[lf]), yearAgo: lf >= 12 ? r1(fx[lf - 12]) : null } : null,
+      record: { n: cases.length, ok: ok.length, base: Math.max(up, cases.length - up), up, down: cases.length - up, miss: cases.filter((c) => !ok.includes(c)).map((c) => c.start) }, cases };
   }
 
   // 7-2. 사이클 위치: 경기(표준 선행) × 유동성(표준 유동성) 사분면, 기준금리 국면
@@ -409,7 +443,7 @@ async function main() {
   const data = {
     generated: new Date().toISOString(), configVersion: config.version, start: ymStr(M0 + S0), months: N, backtestStartIndex: bt0,
     rules: { threshold: TH, minMonths: MIN, window: W, newDays: 7 },
-    prices: { nasdaq, sp500 }, capeEst, quad, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
+    prices: { nasdaq, sp500 }, capeEst, quad, fiscal, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
     indicators: [...indicators, ...priceInds], groupNow, alert, nfci, sector, ai, schedule, forecasts, notes,
   };
   await writeFile(OUT_FILE, "// 자동 생성 파일. 직접 고치지 않는다. 만든 시각: " + data.generated + "\nwindow.BC_DATA = " + JSON.stringify(data) + ";\n", "utf8");
@@ -418,6 +452,7 @@ async function main() {
   console.log(`\n완료. web/data.js (${kb}KB) 를 만들었습니다. web/index.html 을 브라우저로 여세요.`);
   console.log(`기간 ${data.start} ~ ${ymStr(M0 + S0 + lastIdx)}, 지표 ${data.indicators.length}개, 침체 ${recs.filter(([s]) => s >= bt0).length}회(${rules.backtest_start} 이후)`);
   console.log(`침체 경보: ${alert.on ? "켜짐" : "꺼짐"} (선행 종합 ${alert.score}) / 성적 ${alert.record.hits}/${alert.record.eligible}, 헛경보 ${alert.record.falseSignals}/${alert.record.counted}`);
+  if (fiscal && fiscal.now) console.log(`재정적자/GDP: ${fiscal.now.value}% (1년 전 ${fiscal.now.yearAgo}%) · 경보 ${fiscal.record.n}번 중 ${fiscal.record.ok}번 방향 일치(기준 ${fiscal.cut}%, 아무것도 안 봤을 때 ${fiscal.record.base}번) · 어긋난 경보: ${fiscal.record.miss.join(", ") || "없음"}`);
   if (quad && quad.now) {
     console.log(`사이클 위치(${quad.now.month}): ${quad.now.q} · 경기 ${quad.now.econ} · 유동성 ${quad.now.liq} · 기준금리 ${quad.now.rate}% (${quad.now.phase === 1 ? "인상기" : quad.now.phase === -1 ? "인하기" : "동결기"})`);
     for (const x of quad.stats) console.log(`  ${x.name}: 기간 ${x.share}% · 이후 1년 나스닥 평균 ${x.mean}% · 손실 확률 ${x.neg}% (${x.n}개월)`);

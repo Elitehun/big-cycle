@@ -23,12 +23,12 @@
   var AI_CAT = "AI 투자 사이클";
   var CATS = [
     { id: "경제지표", note: "선행 · 동행 · 후행 · 물가", groups: ["선행", "동행", "후행", "물가"] },
-    { id: "유동성 지표", note: "네 묶음을 따로 봅니다. 평균 내지 않습니다", groups: ["연준·단기자금", "국채", "기업 채권", "은행"] },
+    { id: "유동성 지표", note: "묶음을 따로 봅니다. 평균 내지 않습니다", groups: ["연준·단기자금", "국채", "기업 채권", "은행"].concat(D.fiscal ? ["정부"] : []) },
     { id: "주도 섹터 (AI)", note: "경고등 전용 · 5년 CDS, 단위 bp", groups: ["자금조달"] },
     { id: AI_CAT, note: "5개사 공시 자료 · 분기마다 갱신 · 과거 검증이 안 되는 참고 지표", groups: ["번 돈 대비 투자", "총차입금", "리스 부채"] },
     { id: "가격·심리", note: "지금 역사적으로 어느 수준인가", groups: ["가격 수준", "심리"] }
   ].filter(function (c) { return (HAS_SECTOR || c.id !== "주도 섹터 (AI)") && (HAS_AI || c.id !== AI_CAT); });
-  var GROUP_LABEL = { "후행": "후행 (확인용)", "물가": "물가 압력", "자금조달": "AI CDS 프리미엄", "번 돈 대비 투자": "번 돈 대비 투자 (%)", "총차입금": "총차입금 (억 달러)", "리스 부채": "리스 부채 (억 달러)" };
+  var GROUP_LABEL = { "정부": "정부 (참고)", "후행": "후행 (확인용)", "물가": "물가 압력", "자금조달": "AI CDS 프리미엄", "번 돈 대비 투자": "번 돈 대비 투자 (%)", "총차입금": "총차입금 (억 달러)", "리스 부채": "리스 부채 (억 달러)" };
   var byId = {};
   D.indicators.forEach(function (x) { byId[x.id] = x; });
   var selectable = function (x) { return !!x.score; };
@@ -58,11 +58,18 @@
   var selectedInds = function () { return pickedInds().filter(function (x) { return !state.hidden[x.id]; }); };
 
   // ---------- 요약 4칸 ----------
+  // 경보 칸 아래 한 줄: 정부가 돈을 얼마나 풀고 있는가
+  function fiscalLine() {
+    var F = D.fiscal; if (!F || !F.now) return "";
+    var big = F.now.value > F.cut, r = F.record;
+    return '<p class="rec">정부 재정적자 GDP의 <strong' + (big ? "" : ' class="accent"') + ' style="font-family:var(--mono)">' + fmt(F.now.value, 1) + "%</strong>" + (F.now.yearAgo === null ? "" : " (1년 전 " + fmt(F.now.yearAgo, 1) + "%)") +
+      ". 과거 경보 " + r.n + "번 중 " + r.ok + "번은 " + fmt(F.cut, 1) + "%를 넘으면 이후 1년 주가가 올랐고 밑돌면 빠졌음. 우연일 수 있음.</p>";
+  }
   function renderTiles() {
     var a = D.alert, r = a.record, html = "";
     html += '<div class="tile"><h2>경기침체 경보</h2><p class="big"' + (a.on ? ' style="color:' + AMBER + '"' : "") + ">" + (a.on === null ? "자료 없음" : a.on ? "켜짐" : "꺼짐") + "</p>" +
       '<p class="sub">선행 종합 점수 <span class="mono">' + fmt(a.score, 1) + "</span> · " + D.rules.threshold + " 미만이 " + D.rules.minMonths + "개월 이어지면 켜집니다</p>" +
-      '<p class="rec">과거 성적: 침체 ' + r.eligible + "번 중 <strong class=\"accent\">" + r.hits + "번</strong>을 평균 " + fmt(r.avgLead, 0) + "개월 앞서 경고. 헛경보는 " + r.counted + "번 중 " + r.falseSignals + "번. 주가 신호는 아닙니다.</p></div>";
+      '<p class="rec">과거 성적: 침체 ' + r.eligible + "번 중 <strong class=\"accent\">" + r.hits + "번</strong>을 평균 " + fmt(r.avgLead, 0) + "개월 앞서 경고. 헛경보는 " + r.counted + "번 중 " + r.falseSignals + "번. 주가 신호는 아닙니다.</p>" + fiscalLine() + "</div>";
 
     var cape = byId.cape, mcap = byId.mcap_gdp;
     var lead = cape || mcap;
@@ -520,8 +527,9 @@
   function quadReadout(i) {
     var k = Q.econ[i] >= Q.cut ? (Q.liq[i] >= Q.cut ? 0 : 2) : (Q.liq[i] >= Q.cut ? 1 : 3), ph = Q.phase[i];
     $("quad-readout").innerHTML = (i === Q.now.index ? "지금 · " : "") + esc(ymKo(monthStr(i))) + " · <strong>" + esc(Q.names[k]) + '</strong> · 경기 <span class="mono">' + fmt(Q.econ[i], 1) + '</span> · 유동성 <span class="mono">' + fmt(Q.liq[i], 1) +
-      '</span> · 기준금리 <span class="mono">' + fmt(Q.rate[i], 2) + "%</span>" + (ph === null || ph === undefined ? "" : " (" + PH_NAME[String(ph)] + ")");
-    var mk = document.getElementById("qrate-mark"); if (mk && mk.dataset.x0) { var x = Number(mk.dataset.x0) + (i - Number(mk.dataset.i0)) * Number(mk.dataset.dx); mk.setAttribute("x1", x); mk.setAttribute("x2", x); }
+      '</span> · 기준금리 <span class="mono">' + fmt(Q.rate[i], 2) + "%</span>" + (ph === null || ph === undefined ? "" : " (" + PH_NAME[String(ph)] + ")") +
+      (D.fiscal && D.fiscal.series[i] !== null && D.fiscal.series[i] !== undefined ? ' · 재정적자/GDP <span class="mono">' + fmt(D.fiscal.series[i], 1) + "%</span>" : "");
+    ["qrate-mark", "qfis-mark"].forEach(function (id) { var mk = document.getElementById(id); if (mk && mk.dataset.x0) { var x = Number(mk.dataset.x0) + (i - Number(mk.dataset.i0)) * Number(mk.dataset.dx); mk.setAttribute("x1", x); mk.setAttribute("x2", x); } });
     Array.prototype.forEach.call(document.querySelectorAll("#quad circle[data-dot]"), function (c) { c.setAttribute("stroke", Number(c.getAttribute("data-dot")) === i ? "#F2F3F5" : "none"); });
   }
   function renderQuad() {
@@ -568,6 +576,24 @@
     r += '<line id="qrate-mark" data-x0="' + L + '" data-i0="' + i0 + '" data-dx="' + dx + '" x1="' + RX(end) + '" x2="' + RX(end) + '" y1="' + rT + '" y2="' + (RH - rB) + '" stroke="#F2F3F5" stroke-dasharray="3 3" opacity="0.7"></line>';
     rh.innerHTML = r + "</svg>";
     $("quad-rate-sub").textContent = "실효 연방기금금리 월평균(%) · " + Q.lookback + "개월 전보다 " + fmt(Q.step, 2) + "%p 이상 오르면 인상기, 내리면 인하기";
+    // 재정적자/GDP 띠: 같은 기간. 점선은 기준(1.5%)
+    var F = D.fiscal, fh = $("quad-fis");
+    if (F && F.now) {
+      var fv = []; for (i = i0; i <= end; i++) if (F.series[i] !== null && F.series[i] !== undefined) fv.push(F.series[i]);
+      if (fv.length > 1) {
+        $("quad-fis-head").hidden = false;
+        var flo = Math.min(Math.min.apply(null, fv), F.cut), fhi = Math.max(Math.max.apply(null, fv), F.cut); if (fhi - flo < 1) { fhi += 0.5; flo -= 0.5; } var fp = (fhi - flo) * 0.14; flo -= fp; fhi += fp;
+        var FY = function (v) { return rT + (fhi - v) / (fhi - flo) * (RH - rT - rB); };
+        var f = '<svg viewBox="0 0 ' + W + " " + RH + '" role="img" aria-label="같은 기간의 정부 재정적자 대 GDP 비율">';
+        [fhi - fp, flo + fp].forEach(function (v) { f += '<line x1="' + L + '" y1="' + FY(v) + '" x2="' + (L + pw) + '" y2="' + FY(v) + '" stroke="#1B1E24"></line><text x="' + (L - 6) + '" y="' + (FY(v) + 4) + '" text-anchor="end" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + fmt(v, 1) + "</text>"; });
+        for (i = i0; i <= end; i++) if (monthStr(i).slice(5) === "01") f += '<line x1="' + RX(i) + '" y1="' + rT + '" x2="' + RX(i) + '" y2="' + (RH - rB) + '" stroke="#1B1E24"></line><text x="' + RX(i) + '" y="' + (RH - 6) + '" text-anchor="middle" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + monthStr(i).slice(0, 4) + "</text>";
+        f += '<line x1="' + L + '" y1="' + FY(F.cut) + '" x2="' + (L + pw) + '" y2="' + FY(F.cut) + '" stroke="' + AMBER + '" stroke-dasharray="5 4" opacity="0.8"></line><text x="' + (L + pw - 4) + '" y="' + (FY(F.cut) - 5) + '" text-anchor="end" font-size="11" fill="' + AMBER + '">기준 ' + fmt(F.cut, 1) + "%</text>";
+        for (i = i0 + 1; i <= end; i++) { var fa = F.series[i - 1], fb = F.series[i]; if (fa !== null && fb !== null && fa !== undefined && fb !== undefined) f += '<line x1="' + RX(i - 1).toFixed(1) + '" y1="' + FY(fa).toFixed(1) + '" x2="' + RX(i).toFixed(1) + '" y2="' + FY(fb).toFixed(1) + '" stroke="#F2F3F5" stroke-width="2.2" stroke-linecap="round"></line>'; }
+        f += '<line id="qfis-mark" data-x0="' + L + '" data-i0="' + i0 + '" data-dx="' + dx + '" x1="' + RX(end) + '" x2="' + RX(end) + '" y1="' + rT + '" y2="' + (RH - rB) + '" stroke="#F2F3F5" stroke-dasharray="3 3" opacity="0.7"></line>';
+        fh.innerHTML = f + "</svg>";
+        $("quad-fis-sub").textContent = "최근 12개월 재정적자 합계 ÷ GDP(%) · 클수록 정부가 돈을 많이 풂 · 그 달에 발표돼 있던 값 기준";
+      }
+    }
     quadReadout(end);
     Array.prototype.forEach.call(host.querySelectorAll("circle[data-hit]"), function (c) {
       c.addEventListener("mouseenter", function () { quadReadout(Number(c.getAttribute("data-hit"))); });
@@ -584,6 +610,9 @@
       "<thead>" + head("기준금리 국면") + "</thead><tbody>" + Q.phaseStats.map(function (x) { return row(x, x.name === nowPh); }).join("") + "</tbody>" +
       "<thead>" + head("경기와 금리 조합") + "</thead><tbody>" + Q.combo.map(function (x) { return row(x, false); }).join("") + "</tbody>";
     $("quad-cases").innerHTML = "과거 사례: " + Q.cases.map(function (c) { return esc(ymKo(c.month)) + " <strong>" + esc(c.q || "자료 없음") + "</strong>" + (c.ret === null ? "" : "(이후 1년 " + pct(c.ret) + ")"); }).join(" · ");
+    if (D.fiscal && D.fiscal.record.n) { var fr = D.fiscal.record, fe = $("quad-fiscal"); fe.hidden = false;
+      fe.innerHTML = "정부 재정적자: 침체 경보가 켜진 " + fr.n + "번 가운데 <strong>" + fr.ok + "번</strong>은 \"적자가 GDP의 " + fmt(D.fiscal.cut, 1) + "%보다 크면 이후 1년 나스닥 상승, 작으면 하락\"과 방향이 같았습니다(아무것도 보지 않고 상승이라고만 답하면 " + fr.base + "번)." +
+        (fr.miss.length ? " 어긋난 경보: " + fr.miss.map(function (m) { return esc(ymKo(m)); }).join(", ") + "." : "") + " 다만 같은 사이클에 몰린 경보가 많아 독립된 사례는 6번쯤이고, 기준값은 결과를 보고 고른 것이며, 재정적자는 최근으로 올수록 커졌습니다. 우연일 수 있습니다."; }
     $("quad-note").textContent = "기간은 " + monthStr(BT0).slice(0, 4) + "년부터. 수정된 최종 자료를 썼고 발표 시차를 반영하지 않았습니다. 칸마다 평균이 달라도 우연일 수 있으며, 주식을 사고팔 신호가 아닙니다. 유동성 점수에는 금리 지표(기준금리, 10년물)가 이미 들어 있습니다. 금리를 뺀 유동성 점수로 나눠도 같은 칸이었던 달은 " + (Q.agree === null ? "—" : fmt(Q.agree, 0)) + "%입니다.";
   }
   Array.prototype.forEach.call(document.querySelectorAll("[data-qrange]"), function (b) { b.addEventListener("click", function () { state.quadRange = Number(b.getAttribute("data-qrange")); save(); renderQuad(); }); });
