@@ -1,0 +1,162 @@
+{
+ "GS10": {
+  "id": 18,
+  "name": "H.15 Selected Interest Rates"
+ },
+ "TB3MS": {
+  "id": 18,
+  "name": "H.15 Selected Interest Rates"
+ },
+ "ICSA": {
+  "id": 180,
+  "name": "Unemployment Insurance Weekly Claims Report"
+ },
+ "PERMIT": {
+  "id": 27,
+  "name": "New Residential Construction"
+ },
+ "GACDFSA066MSFRBPHI": {
+  "id": 351,
+  "name": "Manufacturing Business Outlook Survey"
+ },
+ "UMCSENT": {
+  "id": 91,
+  "name": "Surveys of Consumers"
+ },
+ "AWHMAN": {
+  "id": 50,
+  "name": "Employment Situation"
+ },
+ "PAYEMS": {
+  "id": 50,
+  "name": "Employment Situation"
+ },
+ "SAHMREALTIME": {
+  "id": 456,
+  "name": "Sahm Rule Recession Indicator"
+ },
+ "INDPRO": {
+  "id": 13,
+  "name": "G.17 Industrial Production and Capacity Utilization"
+ },
+ "W875RX1": {
+  "id": 54,
+  "name": "Personal Income and Outlays"
+ },
+ "CMRMTSPL": {
+  "id": 282,
+  "name": "Supplemental Estimates, Underlying Detail Tables, Spliced Series"
+ },
+ "UNRATE": {
+  "id": 50,
+  "name": "Employment Situation"
+ },
+ "UEMPMEAN": {
+  "id": 50,
+  "name": "Employment Situation"
+ },
+ "BUSLOANS": {
+  "id": 22,
+  "name": "H.8 Assets and Liabilities of Commercial Banks in the United States"
+ },
+ "PCEPILFE": {
+  "id": 54,
+  "name": "Personal Income and Outlays"
+ },
+ "CPIAUCSL": {
+  "id": 10,
+  "name": "Consumer Price Index"
+ },
+ "MICH": {
+  "id": 91,
+  "name": "Surveys of Consumers"
+ },
+ "T10YIE": {
+  "id": 304,
+  "name": "Interest Rate Spreads"
+ },
+ "WTISPLC": {
+  "id": 394,
+  "name": "Spliced Oil Price"
+ },
+ "NFCI": {
+  "id": 221,
+  "name": "Chicago Fed National Financial Conditions Index"
+ },
+ "WALCL": {
+  "id": 20,
+  "name": "H.4.1 Factors Affecting Reserve Balances"
+ },
+ "WTREGEN": {
+  "id": 20,
+  "name": "H.4.1 Factors Affecting Reserve Balances"
+ },
+ "RRPONTSYD": {
+  "id": 379,
+  "name": "Temporary Open Market Operations"
+ },
+ "WRESBAL": {
+  "id": 20,
+  "name": "H.4.1 Factors Affecting Reserve Balances"
+ },
+ "M2SL": {
+  "id": 21,
+  "name": "H.6 Money Stock Measures"
+ },
+ "SOFR": {
+  "id": 445,
+  "name": "Secured Overnight Financing Rate Data"
+ },
+ "IORB": {
+  "id": 185,
+  "name": "Interest Rate on Reserve Balances"
+ },
+ "FEDFUNDS": {
+  "id": 18,
+  "name": "H.15 Selected Interest Rates"
+ },
+ "DGS10": {
+  "id": 18,
+  "name": "H.15 Selected Interest Rates"
+ },
+ "DFII10": {
+  "id": 18,
+  "name": "H.15 Selected Interest Rates"
+ },
+ "THREEFYTP10": {
+  "id": 354,
+  "name": "An Arbitrage-Free Three-Factor Term Structure Model and the Recent Behavior of Long-Term Yields and Distant-Horizon Forward Rates"
+ },
+ "BAA": {
+  "id": 427,
+  "name": "Moody's Daily Corporate Bond Yield Averages"
+ },
+ "BAMLH0A0HYM2": {
+  "id": 209,
+  "name": "ICE BofA Indices"
+ },
+ "BAMLC0A0CM": {
+  "id": 209,
+  "name": "ICE BofA Indices"
+ },
+ "DRTSCILM": {
+  "id": 191,
+  "name": "Senior Loan Officer Opinion Survey on Bank Lending Practices"
+ },
+ "TOTBKCR": {
+  "id": 22,
+  "name": "H.8 Assets and Liabilities of Commercial Banks in the United States"
+ },
+ "NCBEILQ027S": {
+  "id": 52,
+  "name": "Z.1 Financial Accounts of the United States"
+ },
+ "GDP": {
+  "id": 53,
+  "name": "Gross Domestic Product"
+ },
+ "VIXCLS": {
+  "id": 200,
+  "name": "CBOE Market Statistics"
+ }
+}

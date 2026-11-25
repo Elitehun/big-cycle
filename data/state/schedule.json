@@ -1,0 +1,172 @@
+{
+ "fetched": "2026-11-23T12:27:05.652Z",
+ "from": "2026-11-22",
+ "to": "2026-12-14",
+ "items": [
+  {
+   "date": "2026-11-24",
+   "release": "G.17 Industrial Production and Capacity Utilization",
+   "ids": [
+    "industrial_production"
+   ]
+  },
+  {
+   "date": "2026-11-24",
+   "release": "H.6 Money Stock Measures",
+   "ids": [
+    "real_m2"
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "release": "Chicago Fed National Financial Conditions Index",
+   "ids": [
+    "nfci"
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "release": "Gross Domestic Product",
+   "ids": [
+    "mcap_gdp"
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "release": "New Residential Construction",
+   "ids": [
+    "building_permits"
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "release": "Personal Income and Outlays",
+   "ids": [
+    "real_income_ex_transfers",
+    "core_pce"
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "release": "Supplemental Estimates, Underlying Detail Tables, Spliced Series",
+   "ids": [
+    "real_mfg_trade_sales"
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "release": "Unemployment Insurance Weekly Claims Report",
+   "ids": [
+    "initial_claims"
+   ]
+  },
+  {
+   "date": "2026-11-27",
+   "release": "H.4.1 Factors Affecting Reserve Balances",
+   "ids": [
+    "fed_net_liquidity",
+    "reserve_balances"
+   ]
+  },
+  {
+   "date": "2026-11-27",
+   "release": "H.8 Assets and Liabilities of Commercial Banks in the United States",
+   "ids": [
+    "ci_loans",
+    "bank_credit"
+   ]
+  },
+  {
+   "date": "2026-12-02",
+   "release": "Chicago Fed National Financial Conditions Index",
+   "ids": [
+    "nfci"
+   ]
+  },
+  {
+   "date": "2026-12-03",
+   "release": "H.4.1 Factors Affecting Reserve Balances",
+   "ids": [
+    "fed_net_liquidity",
+    "reserve_balances"
+   ]
+  },
+  {
+   "date": "2026-12-03",
+   "release": "Unemployment Insurance Weekly Claims Report",
+   "ids": [
+    "initial_claims"
+   ]
+  },
+  {
+   "date": "2026-12-04",
+   "release": "Employment Situation",
+   "ids": [
+    "mfg_weekly_hours",
+    "nonfarm_payrolls",
+    "unemployment_rate",
+    "unemployment_duration"
+   ]
+  },
+  {
+   "date": "2026-12-04",
+   "release": "H.8 Assets and Liabilities of Commercial Banks in the United States",
+   "ids": [
+    "ci_loans",
+    "bank_credit"
+   ]
+  },
+  {
+   "date": "2026-12-04",
+   "release": "Sahm Rule Recession Indicator",
+   "ids": [
+    "sahm_rule"
+   ]
+  },
+  {
+   "date": "2026-12-09",
+   "release": "Chicago Fed National Financial Conditions Index",
+   "ids": [
+    "nfci"
+   ]
+  },
+  {
+   "date": "2026-12-10",
+   "release": "Consumer Price Index",
+   "ids": [
+    "cpi",
+    "real_m2"
+   ]
+  },
+  {
+   "date": "2026-12-10",
+   "release": "H.4.1 Factors Affecting Reserve Balances",
+   "ids": [
+    "fed_net_liquidity",
+    "reserve_balances"
+   ]
+  },
+  {
+   "date": "2026-12-10",
+   "release": "Unemployment Insurance Weekly Claims Report",
+   "ids": [
+    "initial_claims"
+   ]
+  },
+  {
+   "date": "2026-12-10",
+   "release": "Z.1 Financial Accounts of the United States",
+   "ids": [
+    "mcap_gdp"
+   ]
+  },
+  {
+   "date": "2026-12-11",
+   "release": "H.8 Assets and Liabilities of Commercial Banks in the United States",
+   "ids": [
+    "ci_loans",
+    "bank_credit"
+   ]
+  }
+ ]
+}

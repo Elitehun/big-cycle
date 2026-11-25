@@ -1,0 +1,23 @@
+# 올릴 것만 골라서 올린다. 아래에 적히지 않은 것은 저장소에 들어가지 않는다.
+/*
+!/.github/
+!/.gitignore
+!/README.md
+!/config/
+!/scripts/
+!/web/
+!/data/
+
+# CDS 수치(블룸버그 자료)는 올리지 않는다
+/config/cds-seed.json
+
+# data 폴더에서는 실러 자료와 갱신 기록만 올린다. 받아둔 FRED 원자료, CDS 입력, SEC 자료는 올리지 않는다.
+/data/*
+!/data/manual/
+/data/manual/*
+!/data/manual/shiller.csv
+!/data/manual/shiller-source.txt
+!/data/state/
+
+# 화면이 읽는 자료 파일은 깃허브가 매번 새로 만든다
+/web/data.js
