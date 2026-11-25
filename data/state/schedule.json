@@ -1,8 +1,15 @@
 {
- "fetched": "2026-11-23T12:27:05.652Z",
+ "fetched": "2026-11-25T08:54:48.709Z",
  "from": "2026-11-22",
  "to": "2026-12-14",
  "items": [
+  {
+   "date": "2026-11-24",
+   "release": "An Arbitrage-Free Three-Factor Term Structure Model and the Recent Behavior of Long-Term Yields and Distant-Horizon Forward Rates",
+   "ids": [
+    "term_premium_10y"
+   ]
+  },
   {
    "date": "2026-11-24",
    "release": "G.17 Industrial Production and Capacity Utilization",
