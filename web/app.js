@@ -120,11 +120,20 @@
     return age >= -1 && age <= (D.rules.newDays || 7);
   }
   // 일정 한 줄: 이름(누르면 목록으로 이동) + 펼침 버튼. 펼치면 예측·직전·실제 수치가 이름 아래에 나온다.
+  // "발표됨"이 이 브라우저에서 처음 보이는 항목이면 잠깐 은은하게 빛나게 한다(화면을 연 뒤 10초 동안만, 다시 그려도 반복하지 않도록)
+  var SEEN_KEY = "bigcycle-seen-done", seenDone = {}, freshUntil = Date.now() + 10000, freshNow = {};
+  try { seenDone = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}") || {}; } catch (e) { seenDone = {}; }
+  function isFresh(id, dateKey) {
+    var k = id + "|" + dateKey;
+    if (!seenDone[k]) { seenDone[k] = 1; freshNow[k] = 1;
+      try { var keep = {}, ks = Object.keys(seenDone); ks.slice(Math.max(0, ks.length - 200)).forEach(function (q) { keep[q] = 1; }); localStorage.setItem(SEEN_KEY, JSON.stringify(keep)); } catch (e) { /* 무시 */ } }
+    return !!freshNow[k] && Date.now() < freshUntil;
+  }
   function boardItem(x, dateKey) {
     var k = dateKey + "/" + x.id, open = state.boardAll ? state.boardOpen[k] !== false : !!state.boardOpen[k];
     var l = x.latest || {}, out = isNew(x);
     var num = function (v) { return v === null || v === undefined ? "—" : fmt(v, 2) + esc(l.unit || ""); };
-    var html = '<div class="bitem"><div class="brow"><button type="button" class="bname" data-go="' + esc(x.id) + '">' + esc(x.name) + (out ? '<span class="bdone">발표됨</span>' : "") + "</button>" +
+    var html = '<div class="bitem"><div class="brow"><button type="button" class="bname" data-go="' + esc(x.id) + '">' + esc(x.name) + (out ? '<span class="bdone' + (isFresh(x.id, dateKey) ? " fresh" : "") + '">발표됨</span>' : "") + "</button>" +
       '<button type="button" class="btog" data-tog="' + esc(k) + '" aria-expanded="' + open + '" aria-label="' + esc(x.name) + " 수치 " + (open ? "접기" : "펼치기") + '"><svg class="chev' + (open ? "" : " shut") + '" aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"></path></svg></button></div>';
     if (open) {
       var short = function (o) { return whenLabel(o).replace(/^\d{4}년 /, ""); };
@@ -532,12 +541,35 @@
     ["qrate-mark", "qfis-mark"].forEach(function (id) { var mk = document.getElementById(id); if (mk && mk.dataset.x0) { var x = Number(mk.dataset.x0) + (i - Number(mk.dataset.i0)) * Number(mk.dataset.dx); mk.setAttribute("x1", x); mk.setAttribute("x2", x); } });
     Array.prototype.forEach.call(document.querySelectorAll("#quad circle[data-dot]"), function (c) { c.setAttribute("stroke", Number(c.getAttribute("data-dot")) === i ? "#F2F3F5" : "none"); });
   }
+  // 재생 조작: 버튼을 누르면 기간의 처음부터 한 달씩 길이 그려진다. 막대를 끌면 원하는 달로 간다.
+  var qCur = null, qTimer = null;
+  var PLAY_IC = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 1.2v9.6L10.5 6z" fill="currentColor"></path></svg>', PAUSE_IC = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 1.5h2.6v9H2.5zM6.9 1.5h2.6v9H6.9z" fill="currentColor"></path></svg>';
+  function quadStop(reset) { if (qTimer) { clearInterval(qTimer); qTimer = null; } if (reset) qCur = null; }
+  function quadPlay() {
+    if (!Q || !Q.now) return;
+    if (qTimer) { quadStop(false); renderQuad(); return; }
+    var span = Number(state.quadRange) || 48, end = Q.now.index, first = Math.max(0, end - span + 1);
+    while (first < end && (Q.econ[first] === null || Q.liq[first] === null)) first++;
+    if (qCur === null || qCur >= end) qCur = first;
+    var step = Math.max(45, Math.min(220, Math.round(9000 / Math.max(1, end - first))));   // 기간이 길어도 9초 안팎에 끝나도록
+    qTimer = setInterval(function () {
+      if (qCur >= end) { quadStop(true); renderQuad(); return; }
+      qCur++; renderQuad();
+    }, step);
+    renderQuad();
+  }
   function renderQuad() {
     if (!Q || !Q.now) return;
     $("quad-card").hidden = false;
     var span = Number(state.quadRange) || 48, end = Q.now.index, idx = [];
     for (var i = Math.max(0, end - span + 1); i <= end; i++) if (Q.econ[i] !== null && Q.liq[i] !== null) idx.push(i);
     if (!idx.length) return;
+    // 재생: 화면에 그리는 길은 "지금 보고 있는 달"(cur)까지만. 아래 띠 차트는 전체 기간을 그대로 두고 표시선만 옮긴다.
+    var all = idx, cur = qCur !== null && qCur >= all[0] && qCur <= end ? qCur : end;
+    idx = all.filter(function (q) { return q <= cur; }); cur = idx[idx.length - 1];
+    var seek = $("quad-seek"); seek.min = all[0]; seek.max = end; seek.value = cur;
+    $("quad-play").setAttribute("aria-pressed", String(!!qTimer)); $("quad-play").innerHTML = (qTimer ? PAUSE_IC : PLAY_IC) + "<span>" + (qTimer ? "멈춤" : "재생") + "</span>";
+    $("quad-when").textContent = cur === end ? "지금" : ymKo(monthStr(cur));
     Array.prototype.forEach.call(document.querySelectorAll("[data-qrange]"), function (b) { b.setAttribute("aria-pressed", String(Number(b.getAttribute("data-qrange")) === span)); });
     $("quad-sub").textContent = "가로: 경기(표준 선행 종합 점수) · 세로: 유동성(표준 유동성 종합 점수) · 경계 " + Q.cut + "점 · " + ymKo(monthStr(idx[0])) + "~" + ymKo(monthStr(end));
     var host = $("quad"), W = Math.max(300, Math.round(host.clientWidth || 860)), small = W < 560, H = Math.round(Math.min(560, Math.max(320, W * (small ? 0.9 : 0.6))));
@@ -556,11 +588,11 @@
     var n = idx.length, op = function (k) { return n < 2 ? 1 : 0.18 + 0.82 * Math.pow(k / (n - 1), 1.6); }, col = function (i) { var p = Q.phase[i]; return PH_COLOR[String(p === null || p === undefined ? 0 : p)]; };
     for (var k = 1; k < n; k++) { var a = idx[k - 1], b = idx[k];
       s += '<line x1="' + X(Q.econ[a]).toFixed(1) + '" y1="' + Y(Q.liq[a]).toFixed(1) + '" x2="' + X(Q.econ[b]).toFixed(1) + '" y2="' + Y(Q.liq[b]).toFixed(1) + '" stroke="' + col(b) + '" stroke-width="' + (small ? 1.6 : 2) + '" stroke-linecap="round" opacity="' + op(k).toFixed(2) + '"></line>'; }
-    for (k = 0; k < n; k++) { var i2 = idx[k], cx = X(Q.econ[i2]).toFixed(1), cy = Y(Q.liq[i2]).toFixed(1), isNow = i2 === end, jan = monthStr(i2).slice(5) === "01";
+    for (k = 0; k < n; k++) { var i2 = idx[k], cx = X(Q.econ[i2]).toFixed(1), cy = Y(Q.liq[i2]).toFixed(1), isNow = i2 === cur, jan = monthStr(i2).slice(5) === "01";
       s += '<circle data-dot="' + i2 + '" cx="' + cx + '" cy="' + cy + '" r="' + (isNow ? 7 : jan ? 4 : 2.5) + '" fill="' + col(i2) + '" opacity="' + (isNow ? 1 : op(k).toFixed(2)) + '" stroke="' + (isNow ? "#F2F3F5" : "none") + '" stroke-width="2"></circle>';
       if (jan && !isNow) s += '<text x="' + cx + '" y="' + (Number(cy) - 8) + '" text-anchor="middle" font-size="11" fill="#D5D8DE" opacity="' + Math.max(0.55, op(k)).toFixed(2) + '" font-family="IBM Plex Mono, monospace">' + monthStr(i2).slice(0, 4) + "</text>"; }
-    var nx = X(Q.econ[end]), ny = Y(Q.liq[end]);
-    s += '<text x="' + (nx > L + pw - 50 ? nx - 12 : nx + 12) + '" y="' + (ny + 4) + '" text-anchor="' + (nx > L + pw - 50 ? "end" : "start") + '" font-size="13" font-weight="700" fill="#F2F3F5">지금</text>';
+    var nx = X(Q.econ[cur]), ny = Y(Q.liq[cur]);
+    s += '<text x="' + (nx > L + pw - 50 ? nx - 12 : nx + 12) + '" y="' + (ny + 4) + '" text-anchor="' + (nx > L + pw - 50 ? "end" : "start") + '" font-size="13" font-weight="700" fill="#F2F3F5">' + (cur === end ? "지금" : monthStr(cur).replace("-", ".")) + '</text>';
     for (k = 0; k < n; k++) s += '<circle data-hit="' + idx[k] + '" cx="' + X(Q.econ[idx[k]]).toFixed(1) + '" cy="' + Y(Q.liq[idx[k]]).toFixed(1) + '" r="9" fill="transparent"></circle>';
     host.innerHTML = s + "</svg>";
 
@@ -573,7 +605,7 @@
     [hi - pad, lo + pad].forEach(function (v) { r += '<line x1="' + L + '" y1="' + RY(v) + '" x2="' + (L + pw) + '" y2="' + RY(v) + '" stroke="#1B1E24"></line><text x="' + (L - 6) + '" y="' + (RY(v) + 4) + '" text-anchor="end" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + fmt(v, 2) + "</text>"; });
     for (i = i0; i <= end; i++) if (monthStr(i).slice(5) === "01") r += '<line x1="' + RX(i) + '" y1="' + rT + '" x2="' + RX(i) + '" y2="' + (RH - rB) + '" stroke="#1B1E24"></line><text x="' + RX(i) + '" y="' + (RH - 6) + '" text-anchor="middle" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + monthStr(i).slice(0, 4) + "</text>";
     for (i = i0 + 1; i <= end; i++) if (Q.rate[i] !== null && Q.rate[i - 1] !== null) r += '<line x1="' + RX(i - 1).toFixed(1) + '" y1="' + RY(Q.rate[i - 1]).toFixed(1) + '" x2="' + RX(i).toFixed(1) + '" y2="' + RY(Q.rate[i]).toFixed(1) + '" stroke="' + col(i) + '" stroke-width="2.2" stroke-linecap="round"></line>';
-    r += '<line id="qrate-mark" data-x0="' + L + '" data-i0="' + i0 + '" data-dx="' + dx + '" x1="' + RX(end) + '" x2="' + RX(end) + '" y1="' + rT + '" y2="' + (RH - rB) + '" stroke="#F2F3F5" stroke-dasharray="3 3" opacity="0.7"></line>';
+    r += '<line id="qrate-mark" data-x0="' + L + '" data-i0="' + i0 + '" data-dx="' + dx + '" x1="' + RX(cur) + '" x2="' + RX(cur) + '" y1="' + rT + '" y2="' + (RH - rB) + '" stroke="#F2F3F5" stroke-dasharray="3 3" opacity="0.7"></line>';
     rh.innerHTML = r + "</svg>";
     $("quad-rate-sub").textContent = "실효 연방기금금리 월평균(%) · " + Q.lookback + "개월 전보다 " + fmt(Q.step, 2) + "%p 이상 오르면 인상기, 내리면 인하기";
     // 재정적자/GDP 띠: 같은 기간. 점선은 기준(1.5%)
@@ -589,17 +621,17 @@
         for (i = i0; i <= end; i++) if (monthStr(i).slice(5) === "01") f += '<line x1="' + RX(i) + '" y1="' + rT + '" x2="' + RX(i) + '" y2="' + (RH - rB) + '" stroke="#1B1E24"></line><text x="' + RX(i) + '" y="' + (RH - 6) + '" text-anchor="middle" font-size="11" fill="#A9AFBA" font-family="IBM Plex Mono, monospace">' + monthStr(i).slice(0, 4) + "</text>";
         f += '<line x1="' + L + '" y1="' + FY(F.cut) + '" x2="' + (L + pw) + '" y2="' + FY(F.cut) + '" stroke="' + AMBER + '" stroke-dasharray="5 4" opacity="0.8"></line><text x="' + (L + pw - 4) + '" y="' + (FY(F.cut) - 5) + '" text-anchor="end" font-size="11" fill="' + AMBER + '">기준 ' + fmt(F.cut, 1) + "%</text>";
         for (i = i0 + 1; i <= end; i++) { var fa = F.series[i - 1], fb = F.series[i]; if (fa !== null && fb !== null && fa !== undefined && fb !== undefined) f += '<line x1="' + RX(i - 1).toFixed(1) + '" y1="' + FY(fa).toFixed(1) + '" x2="' + RX(i).toFixed(1) + '" y2="' + FY(fb).toFixed(1) + '" stroke="#F2F3F5" stroke-width="2.2" stroke-linecap="round"></line>'; }
-        f += '<line id="qfis-mark" data-x0="' + L + '" data-i0="' + i0 + '" data-dx="' + dx + '" x1="' + RX(end) + '" x2="' + RX(end) + '" y1="' + rT + '" y2="' + (RH - rB) + '" stroke="#F2F3F5" stroke-dasharray="3 3" opacity="0.7"></line>';
+        f += '<line id="qfis-mark" data-x0="' + L + '" data-i0="' + i0 + '" data-dx="' + dx + '" x1="' + RX(cur) + '" x2="' + RX(cur) + '" y1="' + rT + '" y2="' + (RH - rB) + '" stroke="#F2F3F5" stroke-dasharray="3 3" opacity="0.7"></line>';
         fh.innerHTML = f + "</svg>";
         $("quad-fis-sub").textContent = "최근 12개월 재정적자 합계 ÷ GDP(%) · 클수록 정부가 돈을 많이 풂 · 그 달에 발표돼 있던 값 기준";
       }
     }
-    quadReadout(end);
+    quadReadout(cur);
     Array.prototype.forEach.call(host.querySelectorAll("circle[data-hit]"), function (c) {
       c.addEventListener("mouseenter", function () { quadReadout(Number(c.getAttribute("data-hit"))); });
       c.addEventListener("click", function () { quadReadout(Number(c.getAttribute("data-hit"))); });
     });
-    host.onmouseleave = function () { quadReadout(end); };
+    host.onmouseleave = function () { quadReadout(cur); };
   }
   function renderQuadRecord() {
     if (!Q || !Q.now) return;
@@ -615,7 +647,9 @@
         (fr.miss.length ? " 어긋난 경보: " + fr.miss.map(function (m) { return esc(ymKo(m)); }).join(", ") + "." : "") + " 다만 같은 사이클에 몰린 경보가 많아 독립된 사례는 6번쯤이고, 기준값은 결과를 보고 고른 것이며, 재정적자는 최근으로 올수록 커졌습니다. 우연일 수 있습니다."; }
     $("quad-note").textContent = "기간은 " + monthStr(BT0).slice(0, 4) + "년부터. 수정된 최종 자료를 썼고 발표 시차를 반영하지 않았습니다. 칸마다 평균이 달라도 우연일 수 있으며, 주식을 사고팔 신호가 아닙니다. 유동성 점수에는 금리 지표(기준금리, 10년물)가 이미 들어 있습니다. 금리를 뺀 유동성 점수로 나눠도 같은 칸이었던 달은 " + (Q.agree === null ? "—" : fmt(Q.agree, 0)) + "%입니다.";
   }
-  Array.prototype.forEach.call(document.querySelectorAll("[data-qrange]"), function (b) { b.addEventListener("click", function () { state.quadRange = Number(b.getAttribute("data-qrange")); save(); renderQuad(); }); });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-qrange]"), function (b) { b.addEventListener("click", function () { quadStop(true); state.quadRange = Number(b.getAttribute("data-qrange")); save(); renderQuad(); }); });
+  $("quad-play").addEventListener("click", quadPlay);
+  $("quad-seek").addEventListener("input", function () { quadStop(false); var v = Number(this.value); qCur = Q && Q.now && v >= Q.now.index ? null : v; renderQuad(); });
   if (Q && Q.now) { if (window.ResizeObserver) new ResizeObserver(function () { renderQuad(); }).observe($("quad-card")); else window.addEventListener("resize", renderQuad); }
 
   function renderAll() { renderBoard(); renderTiles(); renderNews(); renderList(); renderChart(); renderRecord(); renderQuad(); renderQuadRecord(); }

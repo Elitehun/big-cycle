@@ -99,6 +99,10 @@ body.panel-closed aside { opacity: 0; visibility: hidden; border-color: transpar
 @media (max-width: 420px) { .grid4 { grid-template-columns: minmax(0, 1fr); } }
 .grid4 > div { background: var(--ground); padding: 14px 16px; }
 .grid4 .k { font-size: 12px; color: var(--muted); } .grid4 .v { margin-top: 6px; font-size: 17px; font-family: var(--mono); font-weight: 500; } .grid4 .n { margin-top: 4px; font-size: 12px; color: var(--muted); }
+.qplay { display: flex; align-items: center; gap: 12px; padding: 12px 20px 0; }
+.qplay .btn { display: inline-flex; align-items: center; gap: 8px; min-width: 84px; justify-content: center; }
+.qplay input[type=range] { flex: 1; min-width: 0; height: 28px; accent-color: #F2F3F5; background: transparent; cursor: pointer; }
+#quad-when { min-width: 92px; text-align: right; font-size: 13px; color: var(--text-2); }
 #quad-readout { padding: 12px 20px 0; font-size: 14px; color: var(--text-2); min-height: 34px; } #quad-readout strong { color: var(--text); font-weight: 700; }
 #quad { padding: 8px 12px 0; } #quad svg, #quad-rate svg, #quad-fis svg { display: block; width: 100%; height: auto; }
 .qlegend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 6px 20px 14px; font-size: 12px; color: var(--text-2); }
@@ -157,6 +161,9 @@ details summary { cursor: pointer; min-height: 32px; }
 .ball { margin-left: auto; min-height: 32px; padding: 0 10px; background: transparent; border: 1px solid var(--line-strong); color: var(--text); font-size: 12px; cursor: pointer; }
 .ball:hover { border-color: var(--text); }
 .bdone { margin-left: 6px; font-size: 11px; color: var(--link); }
+.bdone.fresh { animation: bdone-glow 2.6s ease-in-out 3; }
+@keyframes bdone-glow { 0%, 100% { color: var(--link); text-shadow: none; } 50% { color: #DCEEFF; text-shadow: 0 0 8px rgba(143, 196, 255, .75); } }
+@media (prefers-reduced-motion: reduce) { .bdone.fresh { animation: none; } }
 .board-msg { padding: 14px 20px; font-size: 13px; color: var(--text-2); }
 @media (max-width: 860px) { .board-days { grid-auto-flow: row; } .bday { min-height: 0; } .bday.empty:not(.today) { display: none; } }
 .it-delta { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--muted); }
@@ -223,6 +230,7 @@ details summary { cursor: pointer; min-height: 32px; }
 <button type="button" class="btn sm" data-qrange="120" aria-pressed="false">10년</button>
 </div>
 </div>
+<div class="qplay"><button type="button" class="btn sm" id="quad-play" aria-pressed="false"></button><input type="range" id="quad-seek" step="1" aria-label="보는 달 옮기기"><span class="mono" id="quad-when"></span></div>
 <p id="quad-readout" aria-live="off"></p>
 <div id="quad"></div>
 <p class="qlegend"><span><i style="background:#F5B841"></i>금리 인상기</span><span><i style="background:#A9AFBA"></i>동결기</span><span><i style="background:#8FC4FF"></i>인하기</span><span class="muted">오래된 달일수록 흐리게 · 점에 마우스를 올리면 그 달의 값</span></p>
