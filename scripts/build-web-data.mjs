@@ -14,7 +14,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const REFRESH = args.includes("--refresh");
 const OFFLINE = args.includes("--offline");
-const WITH_CDS = args.includes("--with-cds");   // CDS는 기본으로 뺀다. 넣으려면 이 옵션을 붙인다
+const WITH_CDS = args.includes("--with-cds");
+// 갱신 기록(새 발표 날짜, 발표 일정)은 깃허브 자동 실행에서만 파일로 남긴다. PC에서 돌릴 때는 읽기만 해서 깃허브 쪽 기록과 부딪히지 않게 한다.
+const SAVE_STATE = !!process.env.GITHUB_ACTIONS || args.includes("--save-state");   // CDS는 기본으로 뺀다. 넣으려면 이 옵션을 붙인다
 const argVal = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
 const RAW_DIR = argVal("--data-dir", join(ROOT, "data", "raw"));
 const MANUAL_DIR = argVal("--manual-dir", join(ROOT, "data", "manual"));
@@ -74,7 +76,7 @@ async function buildSchedule(inds, apiKey) {
       map[s] = r ? { id: r.id, name: r.name } : { id: null, name: null };
       await sleep(150);
     }
-    await writeFile(mapFile, JSON.stringify(map, null, 1), "utf8");
+    if (SAVE_STATE) await writeFile(mapFile, JSON.stringify(map, null, 1), "utf8");
 
     const now = new Date(), mon = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     mon.setUTCDate(mon.getUTCDate() - ((mon.getUTCDay() + 6) % 7) - 1);   // 한국 시각과의 차이를 감안해 하루 앞에서 시작
@@ -96,7 +98,7 @@ async function buildSchedule(inds, apiKey) {
       items.push({ date: r.date, release: r.release_name, ids: [...byRelease.get(r.release_id)] });
     }
     const schedule = { fetched: new Date().toISOString(), from, to, items };
-    await writeFile(schedFile, JSON.stringify(schedule, null, 1), "utf8");
+    if (SAVE_STATE) await writeFile(schedFile, JSON.stringify(schedule, null, 1), "utf8");
     console.log(`발표 일정: ${from} ~ ${to} 사이 달력 ${rows.length}건 중 우리 지표 관련 ${items.length}건`);
     if (!rows.length) notes.push("발표 일정: FRED 달력에서 해당 기간 일정을 받지 못함");
     return schedule;
@@ -264,10 +266,12 @@ async function main() {
     else if (prev.obs !== obs) relState[x.id] = { obs, seen: prev.obs.length === 7 && obs.startsWith(prev.obs) ? prev.seen : today };   // 예전 기록(달만 적힌 것)은 날짜 형식으로 바꾸기만 한다
     x.latest.newOn = relState[x.id].seen;
   }
-  await writeFile(stateFile, JSON.stringify(relState, null, 1), "utf8");
+  if (SAVE_STATE) await writeFile(stateFile, JSON.stringify(relState, null, 1), "utf8");
 
   // 예측치: 자동으로 받는 곳이 없어, data/manual/forecasts.json 에 적어 둔 것이 있으면 그대로 싣는다
   const forecasts = await readJson(join(MANUAL_DIR, "forecasts.json"), null);
+  // AI 투자 사이클: scripts/build-ai-capex.mjs 가 SEC 공시 자료에서 만들어 둔 숫자
+  const ai = await readJson(join(MANUAL_DIR, "ai-capex.json"), null);
 
   // 4-3. 이번 주 발표 일정
   const schedule = await buildSchedule([...indicators, ...priceInds], apiKey);
@@ -341,7 +345,7 @@ async function main() {
     generated: new Date().toISOString(), configVersion: config.version, start: ymStr(M0 + S0), months: N, backtestStartIndex: bt0,
     rules: { threshold: TH, minMonths: MIN, window: W, newDays: 7 },
     prices: { nasdaq, sp500 }, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
-    indicators: [...indicators, ...priceInds], groupNow, alert, nfci, sector, schedule, forecasts, notes,
+    indicators: [...indicators, ...priceInds], groupNow, alert, nfci, sector, ai, schedule, forecasts, notes,
   };
   await writeFile(OUT_FILE, "// 자동 생성 파일. 직접 고치지 않는다. 만든 시각: " + data.generated + "\nwindow.BC_DATA = " + JSON.stringify(data) + ";\n", "utf8");
 

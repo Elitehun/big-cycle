@@ -1,0 +1,339 @@
+{
+ "generated": "2026-11-25",
+ "unit": "10억 달러",
+ "source": "미국 증권거래위원회(SEC) 공시 자료. 각 회사가 제출한 분기·연간 보고서의 현금흐름표와 재무상태표",
+ "total": {
+  "quarter": "2026Q3",
+  "ttmCapex": 691.1,
+  "ttmOcf": 723.9,
+  "ratio": 95,
+  "ratioYearAgo": 64,
+  "capexGrowth": 94,
+  "quarterRatio": 116,
+  "debtQuarter": "2026Q3",
+  "debtNow": 426.6,
+  "debtYearAgo": 153.9,
+  "debtCompanies": [
+   "마이크로소프트",
+   "알파벳",
+   "아마존",
+   "메타"
+  ],
+  "series": [
+   {
+    "q": "2017Q3",
+    "capex": 11,
+    "ocf": 38.8,
+    "ttmRatio": null
+   },
+   {
+    "q": "2017Q4",
+    "capex": 13.4,
+    "ocf": 39.2,
+    "ttmRatio": null
+   },
+   {
+    "q": "2018Q1",
+    "capex": 16.4,
+    "ocf": 33.2,
+    "ttmRatio": null
+   },
+   {
+    "q": "2018Q2",
+    "capex": 16.6,
+    "ocf": 39.9,
+    "ttmRatio": 38
+   },
+   {
+    "q": "2018Q3",
+    "capex": 16,
+    "ocf": 49.7,
+    "ttmRatio": 39
+   },
+   {
+    "q": "2018Q4",
+    "capex": 19.2,
+    "ocf": 46.5,
+    "ttmRatio": 40
+   },
+   {
+    "q": "2019Q1",
+    "capex": 14.7,
+    "ocf": 39.5,
+    "ttmRatio": 38
+   },
+   {
+    "q": "2019Q2",
+    "capex": 17.8,
+    "ocf": 50.8,
+    "ttmRatio": 36
+   },
+   {
+    "q": "2019Q3",
+    "capex": 18.7,
+    "ocf": 52.5,
+    "ttmRatio": 37
+   },
+   {
+    "q": "2019Q4",
+    "capex": 19.3,
+    "ocf": 54.4,
+    "ttmRatio": 36
+   },
+   {
+    "q": "2020Q1",
+    "capex": 20.6,
+    "ocf": 46.1,
+    "ttmRatio": 37
+   },
+   {
+    "q": "2020Q2",
+    "capex": 21.3,
+    "ocf": 60.8,
+    "ttmRatio": 37
+   },
+   {
+    "q": "2020Q3",
+    "capex": 25.5,
+    "ocf": 64.1,
+    "ttmRatio": 38
+   },
+   {
+    "q": "2020Q4",
+    "capex": 29.8,
+    "ocf": 81,
+    "ttmRatio": 39
+   },
+   {
+    "q": "2021Q1",
+    "capex": 27.8,
+    "ocf": 61.6,
+    "ttmRatio": 39
+   },
+   {
+    "q": "2021Q2",
+    "capex": 31.6,
+    "ocf": 75.3,
+    "ttmRatio": 41
+   },
+   {
+    "q": "2021Q3",
+    "capex": 33.7,
+    "ocf": 76.8,
+    "ttmRatio": 42
+   },
+   {
+    "q": "2021Q4",
+    "capex": 37.5,
+    "ocf": 75.9,
+    "ttmRatio": 45
+   },
+   {
+    "q": "2022Q1",
+    "capex": 36.6,
+    "ocf": 65.6,
+    "ttmRatio": 47
+   },
+   {
+    "q": "2022Q2",
+    "capex": 38.4,
+    "ocf": 69.2,
+    "ttmRatio": 51
+   },
+   {
+    "q": "2022Q3",
+    "capex": 41.1,
+    "ocf": 74.1,
+    "ttmRatio": 54
+   },
+   {
+    "q": "2022Q4",
+    "capex": 41.7,
+    "ocf": 79.3,
+    "ttmRatio": 55
+   },
+   {
+    "q": "2023Q1",
+    "capex": 36.5,
+    "ocf": 71,
+    "ttmRatio": 54
+   },
+   {
+    "q": "2023Q2",
+    "capex": 35.3,
+    "ocf": 96.9,
+    "ttmRatio": 48
+   },
+   {
+    "q": "2023Q3",
+    "capex": 38.3,
+    "ocf": 109.9,
+    "ttmRatio": 43
+   },
+   {
+    "q": "2023Q4",
+    "capex": 44,
+    "ocf": 99.8,
+    "ttmRatio": 41
+   },
+   {
+    "q": "2024Q1",
+    "capex": 46,
+    "ocf": 104.4,
+    "ttmRatio": 40
+   },
+   {
+    "q": "2024Q2",
+    "capex": 55.7,
+    "ocf": 114.6,
+    "ttmRatio": 43
+   },
+   {
+    "q": "2024Q3",
+    "capex": 61.2,
+    "ocf": 123,
+    "ttmRatio": 47
+   },
+   {
+    "q": "2024Q4",
+    "capex": 76.3,
+    "ocf": 136.3,
+    "ttmRatio": 50
+   },
+   {
+    "q": "2025Q1",
+    "capex": 77.7,
+    "ocf": 120.1,
+    "ttmRatio": 55
+   },
+   {
+    "q": "2025Q2",
+    "capex": 97.3,
+    "ocf": 134.6,
+    "ttmRatio": 61
+   },
+   {
+    "q": "2025Q3",
+    "capex": 105.8,
+    "ocf": 167.1,
+    "ttmRatio": 64
+   },
+   {
+    "q": "2025Q4",
+    "capex": 130.7,
+    "ocf": 181,
+    "ttmRatio": 68
+   },
+   {
+    "q": "2026Q1",
+    "capex": 148.4,
+    "ocf": 157.9,
+    "ttmRatio": 75
+   },
+   {
+    "q": "2026Q2",
+    "capex": 181.5,
+    "ocf": 186.4,
+    "ttmRatio": 82
+   },
+   {
+    "q": "2026Q3",
+    "capex": 230.5,
+    "ocf": 198.6,
+    "ttmRatio": 95
+   }
+  ]
+ },
+ "companies": [
+  {
+   "ticker": "MSFT",
+   "name": "마이크로소프트",
+   "quarter": "2026Q3",
+   "lastEnd": "2026-09-30",
+   "ttmCapex": 136,
+   "ttmOcf": 195.9,
+   "ratio": 69,
+   "ratioYearAgo": 47,
+   "debtQuarter": "2026Q3",
+   "debtNow": 35.5,
+   "debtYearAgo": 43.2,
+   "debtYearly": false,
+   "leaseQuarter": "2026Q3",
+   "leaseNow": 98.5,
+   "leaseYearAgo": 77.2,
+   "leaseYearly": false
+  },
+  {
+   "ticker": "GOOGL",
+   "name": "알파벳",
+   "quarter": "2026Q3",
+   "lastEnd": "2026-09-30",
+   "ttmCapex": 159.9,
+   "ttmOcf": 179.6,
+   "ratio": 89,
+   "ratioYearAgo": 51,
+   "debtQuarter": "2026Q3",
+   "debtNow": 126.1,
+   "debtYearAgo": 26.6,
+   "debtYearly": false,
+   "leaseQuarter": "2026Q3",
+   "leaseNow": 24.2,
+   "leaseYearAgo": 17.6,
+   "leaseYearly": false
+  },
+  {
+   "ticker": "AMZN",
+   "name": "아마존",
+   "quarter": "2026Q3",
+   "lastEnd": "2026-09-30",
+   "ttmCapex": 215.2,
+   "ttmOcf": 168.3,
+   "ratio": 128,
+   "ratioYearAgo": 92,
+   "debtQuarter": "2026Q3",
+   "debtNow": 181.3,
+   "debtYearAgo": 55.3,
+   "debtYearly": false,
+   "leaseQuarter": "2026Q3",
+   "leaseNow": 114.8,
+   "leaseYearAgo": 98,
+   "leaseYearly": false
+  },
+  {
+   "ticker": "META",
+   "name": "메타",
+   "quarter": "2026Q3",
+   "lastEnd": "2026-09-30",
+   "ttmCapex": 104.4,
+   "ttmOcf": 133.1,
+   "ratio": 78,
+   "ratioYearAgo": 58,
+   "debtQuarter": "2026Q3",
+   "debtNow": 83.7,
+   "debtYearAgo": 28.8,
+   "debtYearly": false,
+   "leaseQuarter": "2025Q4",
+   "leaseNow": 26.3,
+   "leaseYearAgo": 20.9,
+   "leaseYearly": true
+  },
+  {
+   "ticker": "ORCL",
+   "name": "오라클",
+   "quarter": "2026Q3",
+   "lastEnd": "2026-08-31",
+   "ttmCapex": 75.6,
+   "ttmOcf": 47,
+   "ratio": 161,
+   "ratioYearAgo": 128,
+   "debtQuarter": "2026Q2",
+   "debtNow": 129.5,
+   "debtYearAgo": 92.6,
+   "debtYearly": true,
+   "leaseQuarter": "2026Q3",
+   "leaseNow": 43.8,
+   "leaseYearAgo": 20.3,
+   "leaseYearly": false
+  }
+ ]
+}

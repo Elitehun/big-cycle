@@ -6,6 +6,10 @@
 import { readFile, writeFile, mkdir, access } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import https from "node:https";
+import http from "node:http";
+import { gunzipSync, inflateSync } from "node:zlib";
+import { execFile } from "node:child_process";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SEC_DIR = join(ROOT, "data", "sec"), OUT = join(ROOT, "reports", "sec-check.md");
@@ -29,23 +33,68 @@ const TAGS = {
     "ProceedsFromIssuanceOfSeniorLongTermDebt", "ProceedsFromIssuanceOfUnsecuredDebt", "ProceedsFromNotesPayable", "ProceedsFromIssuanceOfLongTermDebtAndCapitalSecuritiesNet"],
 };
 
-async function secGet(url) {
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const res = await fetch(url, { headers: { "User-Agent": UA, "Accept-Encoding": "gzip, deflate" } });
-    if (res.status === 429) { await sleep(3000 * attempt); continue; }
-    if (!res.ok) throw new Error(`HTTP ${res.status} (${url})`);
-    return await res.json();
-  }
-  throw new Error("요청 한도 초과");
+// SEC는 Node 기본 요청(fetch)을 자동 도구로 보고 막는 경우가 있다. 그래서 두 가지 방식을 준비한다.
+//  (1) https 모듈로 꼭 필요한 머리말만 보내기  (2) 윈도우·맥·리눅스에 기본으로 있는 curl 사용
+// 첫 회사에서 되는 방식을 찾으면 나머지 회사는 그 방식만 쓴다. 거부된 요청을 늘리지 않기 위해서다.
+function viaHttps(url) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith("https:") ? https : http;
+    const req = mod.get(url, { headers: { "User-Agent": UA, "Accept-Encoding": "gzip, deflate", Accept: "application/json, text/html;q=0.9, */*;q=0.8" } }, (res) => {
+      const chunks = [];
+      res.on("data", (d) => chunks.push(d));
+      res.on("end", () => {
+        let buf = Buffer.concat(chunks);
+        try { const enc = res.headers["content-encoding"]; if (enc === "gzip") buf = gunzipSync(buf); else if (enc === "deflate") buf = inflateSync(buf); } catch { /* 압축이 아니면 그대로 */ }
+        resolve({ status: res.statusCode, text: buf.toString("utf8") });
+      });
+    });
+    req.on("error", reject);
+    req.setTimeout(30000, () => req.destroy(new Error("응답 시간 초과")));
+  });
 }
+function viaCurl(url) {
+  return new Promise((resolve, reject) => {
+    execFile(process.platform === "win32" ? "curl.exe" : "curl", ["-sS", "--compressed", "-A", UA, "-H", "Accept: application/json", "-w", "\n%{http_code}", url],
+      { maxBuffer: 200 * 1024 * 1024, encoding: "utf8" }, (err, stdout) => {
+        if (err) return reject(new Error("curl 실행 실패: " + err.message.replace(UA, "(식별 정보)")));
+        const cut = stdout.lastIndexOf("\n");
+        resolve({ status: Number(stdout.slice(cut + 1)), text: stdout.slice(0, cut) });
+      });
+  });
+}
+const METHODS = [["https 모듈", viaHttps], ["curl", viaCurl]];
+let chosen = null;   // 통과한 방식
+const tried = [];
+const whyOf = (text) => text.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+
+async function secGet(url) {
+  const list = chosen ? [chosen] : METHODS;
+  let lastErr = null;
+  for (const m of list) {
+    try {
+      const r = await m[1](url);
+      if (r.status === 200) { if (!chosen) { chosen = m; tried.push(`${m[0]}: 통과`); } return JSON.parse(r.text); }
+      lastErr = new Error(`HTTP ${r.status} · ${m[0]} · SEC 응답: ${whyOf(r.text)}`);
+      if (!chosen) tried.push(`${m[0]}: HTTP ${r.status} (${whyOf(r.text).slice(0, 70)})`);
+    } catch (e) { lastErr = new Error(`${m[0]}: ${e.message}`); if (!chosen) tried.push(`${m[0]}: ${e.message}`); }
+    await sleep(1500);
+  }
+  if (!chosen) gaveUp = true;
+  throw lastErr;
+}
+let gaveUp = false;   // 두 방식 모두 막히면 나머지 회사는 요청하지 않는다
 
 async function loadFacts(c) {
   const file = join(SEC_DIR, `${c.ticker}.json`);
   if (OFFLINE) {
-    if (!(await exists(file))) throw new Error(`${c.ticker}: data/sec 에 받아둔 자료가 없습니다(--offline).`);
-    return JSON.parse(await readFile(file, "utf8"));
+    // 브라우저에서 저장한 파일도 읽는다. 이름이 종목 기호(MSFT.json)여도, SEC 주소 그대로(CIK0000789019.json)여도 된다.
+    const alt = join(SEC_DIR, `CIK${String(c.cik).padStart(10, "0")}.json`);
+    const use = (await exists(file)) ? file : (await exists(alt)) ? alt : null;
+    if (!use) throw new Error(`data/sec 에 ${c.ticker}.json 또는 CIK${String(c.cik).padStart(10, "0")}.json 이 없습니다`);
+    return JSON.parse((await readFile(use, "utf8")).replace(/^\uFEFF/, ""));
   }
-  const body = await secGet(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(c.cik).padStart(10, "0")}.json`);
+  if (gaveUp) throw new Error("앞 회사에서 두 방식 모두 거부되어 요청하지 않음");
+  const body = await secGet(`${process.env.SEC_BASE_URL ?? "https://data.sec.gov"}/api/xbrl/companyfacts/CIK${String(c.cik).padStart(10, "0")}.json`);
   await writeFile(file, JSON.stringify(body), "utf8");
   await sleep(400);
   return body;
@@ -111,11 +160,22 @@ async function main() {
     console.error('PowerShell 예:  $env:SEC_USER_AGENT = "BIG CYCLE study 이름 이메일주소"');
     process.exit(1);
   }
+  if (!OFFLINE) {
+    // 식별 정보의 형식만 점검한다(값은 출력하지 않는다). SEC는 연락 가능한 이메일이 들어 있어야 받아 준다.
+    const problems = [];
+    if (/[^\x20-\x7E]/.test(UA)) problems.push("영문·숫자·기호만 써야 합니다(한글 불가)");
+    if (!/[^\s@]+@[^\s@]+\.[^\s@]+/.test(UA)) problems.push("이메일 주소가 들어 있어야 합니다");
+    if (/본인|이름|이메일|example\.com/i.test(UA)) problems.push("안내 문구가 그대로 들어 있습니다. 실제 이름과 이메일로 바꾸세요");
+    if (problems.length) {
+      console.error("SEC_USER_AGENT 형식에 문제가 있습니다: " + problems.join(" / "));
+      console.error('예:  $env:SEC_USER_AGENT = "BigCycleStudy Hong Gildong hong@gmail.com"');
+      process.exit(1);
+    }
+  }
   await mkdir(SEC_DIR, { recursive: true });
   await mkdir(dirname(OUT), { recursive: true });
 
-  let tickers = null;
-  if (!OFFLINE) { try { tickers = Object.values(await secGet("https://www.sec.gov/files/company_tickers.json")); await sleep(400); } catch (e) { console.log(`종목 목록을 받지 못함(${e.message}). 내장된 번호로 진행합니다.`); } }
+  const tickers = null;   // 종목 목록 요청은 뺐다. 회사 이름은 응답의 entityName 으로 확인한다.
 
   const md = ["# SEC 공시 자료 확인 (5-1단계)", "", `실행 시각: ${new Date().toISOString()}`, "", "금액 단위는 10억 달러. 분기 값은 누계에서 빼서 만든 것입니다.", ""];
   const summary = [], total = new Map();
@@ -150,7 +210,10 @@ async function main() {
   for (const [k, t] of [...total.entries()].sort().slice(-12)) md.push(`| ${k} | ${t.n} | ${bn(t.capex)} | ${bn(t.ocf)} | ${t.ocf ? Math.round((t.capex / t.ocf) * 100) + "%" : "—"} |`);
   md.push("");
   await writeFile(OUT, md.join("\n"), "utf8");
+  if (!OFFLINE) { md.splice(4, 0, `요청 방식 시도: ${tried.join(" / ") || "없음"}`, ""); console.log(`요청 방식 시도: ${tried.join(" / ") || "없음"}`); }
+  await writeFile(OUT, md.join("\n"), "utf8");
   console.log(summary.join("\n"));
+  if (summary.every((x) => x.includes("실패"))) { console.log("\n5개사 모두 실패했습니다."); process.exitCode = 1; }
   console.log(`\n보고서: reports/sec-check.md`);
 }
 

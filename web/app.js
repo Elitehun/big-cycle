@@ -19,14 +19,16 @@
   var pct = function (v, d) { return v === null || v === undefined ? "—" : (v * 100).toFixed(d === undefined ? 1 : d) + "%"; };
   var lastVal = function (arr) { for (var i = arr.length - 1; i >= 0; i--) if (arr[i] !== null) return { v: arr[i], i: i }; return { v: null, i: -1 }; };
 
-  var HAS_SECTOR = !!D.sector;
+  var HAS_SECTOR = !!D.sector, HAS_AI = !!(D.ai && D.ai.total && D.ai.companies);
+  var AI_CAT = "AI 투자 사이클";
   var CATS = [
     { id: "경제지표", note: "선행 · 동행 · 후행 · 물가", groups: ["선행", "동행", "후행", "물가"] },
     { id: "유동성 지표", note: "네 묶음을 따로 봅니다. 평균 내지 않습니다", groups: ["연준·단기자금", "국채", "기업 채권", "은행"] },
     { id: "주도 섹터 (AI)", note: "경고등 전용 · 5년 CDS, 단위 bp", groups: ["자금조달"] },
+    { id: AI_CAT, note: "5개사 공시 자료 · 분기마다 갱신 · 과거 검증이 안 되는 참고 지표", groups: ["번 돈 대비 투자", "총차입금", "리스 부채"] },
     { id: "가격·심리", note: "지금 역사적으로 어느 수준인가", groups: ["가격 수준", "심리"] }
-  ].filter(function (c) { return HAS_SECTOR || c.id !== "주도 섹터 (AI)"; });
-  var GROUP_LABEL = { "후행": "후행 (확인용)", "물가": "물가 압력", "자금조달": "AI CDS 프리미엄" };
+  ].filter(function (c) { return (HAS_SECTOR || c.id !== "주도 섹터 (AI)") && (HAS_AI || c.id !== AI_CAT); });
+  var GROUP_LABEL = { "후행": "후행 (확인용)", "물가": "물가 압력", "자금조달": "AI CDS 프리미엄", "번 돈 대비 투자": "번 돈 대비 투자 (%)", "총차입금": "총차입금 (억 달러)", "리스 부채": "리스 부채 (억 달러)" };
   var byId = {};
   D.indicators.forEach(function (x) { byId[x.id] = x; });
   var selectable = function (x) { return !!x.score; };
@@ -34,6 +36,7 @@
 
   // ---------- 상태(브라우저에 가볍게 기억) ----------
   var state = { chart: "nasdaq", open: { "경제지표": true, "경제지표/선행": true, "유동성 지표": true, "주도 섹터 (AI)": true, "주도 섹터 (AI)/자금조달": true, "가격·심리": true, "가격·심리/가격 수준": true, "가격·심리/심리": true }, checked: {}, hidden: {}, boardOpen: {}, boardAll: false };
+  state.open[AI_CAT] = true; state.open[AI_CAT + "/번 돈 대비 투자"] = true;
   standardLead.forEach(function (id) { state.checked[id] = true; });
   try {
     var saved = JSON.parse(localStorage.getItem("bigcycle-state") || "null");
@@ -43,6 +46,7 @@
       if (saved.hidden) Object.keys(saved.hidden).forEach(function (id) { if (saved.hidden[id] && state.checked[id]) state.hidden[id] = true; });
       if (saved.chart === "sp500" && D.prices.sp500) state.chart = "sp500";
       if (saved.panelOpen === false) state.panelOpen = false;
+      if (!(AI_CAT in state.open)) { state.open[AI_CAT] = true; state.open[AI_CAT + "/번 돈 대비 투자"] = true; }
       if (saved.boardAll) state.boardAll = true;
       if (saved.boardOpen && typeof saved.boardOpen === "object") state.boardOpen = saved.boardOpen;
     }
@@ -80,9 +84,16 @@
     if (HAS_SECTOR) html += '<div class="tile"><h2>AI CDS 프리미엄</h2><p class="big"' + (sHot ? ' style="color:' + AMBER + '"' : "") + ">" + esc(s.status) + "</p>" +
       '<p class="sub">하이퍼스케일러 5개사 CDS 평균 <span class="mono">' + fmt(s.avg, 1) + 'bp</span> · 최고와 최저 차이 <span class="mono">' + fmt(s.spread, 1) + "bp</span> (" + esc(s.date) + ")</p>" +
       '<p class="rec">' + esc(s.statusNote) + " 과거 검증이 안 되는 지표입니다.</p></div>";
-    $("tiles").className = "tiles" + (HAS_SECTOR ? "" : " n3");
+    if (HAS_AI) {
+      var t = D.ai.total, over = t.ratio !== null && t.ratio >= 100;
+      var mult = t.debtNow !== null && t.debtYearAgo ? t.debtNow / t.debtYearAgo : null;
+      html += '<div class="tile"><h2>AI 투자 사이클</h2><p class="big"' + (over ? ' style="color:' + AMBER + '"' : "") + ">번 돈의 " + (t.ratio === null ? "—" : t.ratio) + "%를 투자</p>" +
+        '<p class="sub">5개사 설비투자 최근 4분기 <span class="mono">' + eok(t.ttmCapex) + "</span>억 달러 · 1년 전보다 <span class=\"mono\">" + (t.capexGrowth === null ? "—" : (t.capexGrowth >= 0 ? "+" : "") + t.capexGrowth + "%") + "</span> · " + esc(qLabel(t.quarter)) + "까지</p>" +
+        '<p class="rec">총차입금(' + esc(t.debtCompanies.length) + "개사, 오라클 제외) " + eok(t.debtNow) + "억 달러" + (mult !== null ? "로 1년 전의 " + fmt(mult, 1) + "배" : "") + ". 과거 검증이 안 되는 참고 지표입니다.</p></div>";
+    }
+    $("tiles").className = "tiles" + (HAS_SECTOR || HAS_AI ? "" : " n3");
     $("tiles").innerHTML = html;
-    $("src-line").textContent = "출처: 미국 연준 계열 통계(FRED), 로버트 실러 교수 공개 자료(실러 PER, S&P500 장기 가격)" + (HAS_SECTOR ? ", CDS는 수동 입력." : ".");
+    $("src-line").textContent = "출처: 미국 연준 계열 통계(FRED), 로버트 실러 교수 공개 자료(실러 PER, S&P500 장기 가격)" + (HAS_AI ? ", 미국 증권거래위원회(SEC) 공시 자료(AI 투자 사이클)" : "") + (HAS_SECTOR ? ", CDS는 수동 입력." : ".");
   }
 
   // ---------- 지표 목록 ----------
@@ -177,6 +188,31 @@
     return '<li data-row="' + esc(x.id) + '">' + left + (dots ? '<span class="dots" role="img" aria-label="침체 판정력 3단계 중 ' + n + '">' + dots + "</span>" : "") +
       '<span class="it-val"' + (hot ? ' style="color:' + AMBER + '"' : "") + ">" + shown + deltaHtml + "</span></li>";
   }
+  // AI 투자 사이클: 금액은 10억 달러 단위로 들어 있어 억 달러로 바꿔 보여준다
+  function eok(v) { return v === null || v === undefined ? "—" : fmt(v * 10, 0); }
+  function qLabel(q) { return q ? q.slice(0, 4) + "년 " + q.slice(5) + "분기" : ""; }
+  function aiLine(name, meta, val, hot) {
+    return '<li><span class="nolabel" style="padding-left:0"><span><span class="it-name">' + esc(name) + '</span><span class="it-meta">' + meta + "</span></span></span>" +
+      '<span class="it-val"' + (hot ? ' style="color:' + AMBER + '"' : "") + ">" + val + "</span></li>";
+  }
+  function aiChange(now, ago) { return now === null || !ago ? "" : " · 1년 전 " + eok(ago) + "억 달러(" + (now >= ago ? "+" : "") + Math.round((now / ago - 1) * 100) + "%)"; }
+  function aiRows(g) {
+    var t = D.ai.total, cs = D.ai.companies, out = "";
+    if (g === "번 돈 대비 투자") {
+      var row = function (name, o, q) {
+        return aiLine(name, "최근 4분기 설비투자 " + eok(o.ttmCapex) + "억 · 번 돈 " + eok(o.ttmOcf) + "억 달러 · " + esc(qLabel(q)) + "까지" + (o.ratioYearAgo !== null ? " · 1년 전 " + o.ratioYearAgo + "%" : ""),
+          o.ratio === null ? "—" : o.ratio + "%", o.ratio !== null && o.ratio >= 100);
+      };
+      out += row("5개사 합계", t, t.quarter);
+      cs.forEach(function (c) { out += row(c.name, c, c.quarter); });
+    } else if (g === "총차입금") {
+      out += aiLine(t.debtCompanies.length + "개사 합계 (오라클 제외)", esc(qLabel(t.debtQuarter)) + " 말" + aiChange(t.debtNow, t.debtYearAgo), eok(t.debtNow), false);
+      cs.forEach(function (c) { out += aiLine(c.name, esc(qLabel(c.debtQuarter)) + " 말" + (c.debtYearly ? " · 연 1회 자료" : "") + aiChange(c.debtNow, c.debtYearAgo), eok(c.debtNow), false); });
+    } else {
+      cs.forEach(function (c) { out += aiLine(c.name, c.leaseNow === null ? "자료 없음" : esc(qLabel(c.leaseQuarter)) + " 말" + (c.leaseYearly ? " · 연 1회 자료" : "") + aiChange(c.leaseNow, c.leaseYearAgo), eok(c.leaseNow), false); });
+    }
+    return out;
+  }
   function sectorRows() {
     var s = D.sector;
     return s.items.map(function (it) {
@@ -221,6 +257,7 @@
           if (gOpen) {
             html += '<ul class="items">';
             if (cat.id === "주도 섹터 (AI)") html += sectorRows();
+            else if (cat.id === AI_CAT) html += aiRows(g);
             else D.indicators.filter(function (x) { return x.category === cat.id && x.group === g; }).forEach(function (x) { html += itemRow(x); });
             html += "</ul>";
           }
