@@ -532,7 +532,7 @@
   // ---------- 사이클 위치: 경기 × 유동성 사분면과 기준금리 ----------
   var Q = D.quad, PH_COLOR = { "1": AMBER, "0": "#A9AFBA", "-1": "#8FC4FF" }, PH_NAME = { "1": "인상기", "0": "동결기", "-1": "인하기" };
   var ymKo = function (m) { return m.slice(0, 4) + "년 " + Number(m.slice(5, 7)) + "월"; };
-  var pct = function (v) { return v === null || v === undefined ? "—" : (v > 0 ? "+" : "") + fmt(v, 1) + "%"; };
+  var spct = function (v) { return v === null || v === undefined ? "—" : (v > 0 ? "+" : "") + fmt(v, 1) + "%"; };
   function quadReadout(i) {
     var k = Q.econ[i] >= Q.cut ? (Q.liq[i] >= Q.cut ? 0 : 2) : (Q.liq[i] >= Q.cut ? 1 : 3), ph = Q.phase[i];
     $("quad-readout").innerHTML = (i === Q.now.index ? "지금 · " : "") + esc(ymKo(monthStr(i))) + " · <strong>" + esc(Q.names[k]) + '</strong> · 경기 <span class="mono">' + fmt(Q.econ[i], 1) + '</span> · 유동성 <span class="mono">' + fmt(Q.liq[i], 1) +
@@ -635,13 +635,13 @@
   }
   function renderQuadRecord() {
     if (!Q || !Q.now) return;
-    var row = function (x, cur) { return "<tr" + (cur ? ' class="cur"' : "") + '><td>' + esc(x.name) + (cur ? " (지금)" : "") + '</td><td class="num">' + (x.share === null ? "—" : fmt(x.share, 0) + "%") + '</td><td class="num">' + pct(x.mean) + '</td><td class="num">' + (x.neg === null ? "—" : fmt(x.neg, 0) + "%") + '</td><td class="num">' + (x.n || 0) + "</td></tr>"; };
+    var row = function (x, cur) { return "<tr" + (cur ? ' class="cur"' : "") + '><td>' + esc(x.name) + (cur ? " (지금)" : "") + '</td><td class="num">' + (x.share === null ? "—" : fmt(x.share, 0) + "%") + '</td><td class="num">' + spct(x.mean) + '</td><td class="num">' + (x.neg === null ? "—" : fmt(x.neg, 0) + "%") + '</td><td class="num">' + (x.n || 0) + "</td></tr>"; };
     var head = function (t) { return '<tr><th scope="col">' + t + '</th><th scope="col" class="num">기간 비율</th><th scope="col" class="num">이후 1년 나스닥</th><th scope="col" class="num">손실 확률</th><th scope="col" class="num">개월 수</th></tr>'; };
     var nowPh = PH_NAME[String(Q.now.phase)];
     $("quad-table").innerHTML = "<thead>" + head("칸") + "</thead><tbody>" + Q.stats.map(function (x) { return row(x, x.name === Q.now.q); }).join("") + "</tbody>" +
       "<thead>" + head("기준금리 국면") + "</thead><tbody>" + Q.phaseStats.map(function (x) { return row(x, x.name === nowPh); }).join("") + "</tbody>" +
       "<thead>" + head("경기와 금리 조합") + "</thead><tbody>" + Q.combo.map(function (x) { return row(x, false); }).join("") + "</tbody>";
-    $("quad-cases").innerHTML = "과거 사례: " + Q.cases.map(function (c) { return esc(ymKo(c.month)) + " <strong>" + esc(c.q || "자료 없음") + "</strong>" + (c.ret === null ? "" : "(이후 1년 " + pct(c.ret) + ")"); }).join(" · ");
+    $("quad-cases").innerHTML = "과거 사례: " + Q.cases.map(function (c) { return esc(ymKo(c.month)) + " <strong>" + esc(c.q || "자료 없음") + "</strong>" + (c.ret === null ? "" : "(이후 1년 " + spct(c.ret) + ")"); }).join(" · ");
     if (D.fiscal && D.fiscal.record.n) { var fr = D.fiscal.record, fe = $("quad-fiscal"); fe.hidden = false;
       fe.innerHTML = "정부 재정적자: 침체 경보가 켜진 " + fr.n + "번 가운데 <strong>" + fr.ok + "번</strong>은 \"적자가 GDP의 " + fmt(D.fiscal.cut, 1) + "%보다 크면 이후 1년 나스닥 상승, 작으면 하락\"과 방향이 같았습니다(아무것도 보지 않고 상승이라고만 답하면 " + fr.base + "번)." +
         (fr.miss.length ? " 어긋난 경보: " + fr.miss.map(function (m) { return esc(ymKo(m)); }).join(", ") + "." : "") + " 다만 같은 사이클에 몰린 경보가 많아 독립된 사례는 6번쯤이고, 기준값은 결과를 보고 고른 것이며, 재정적자는 최근으로 올수록 커졌습니다. 우연일 수 있습니다."; }
