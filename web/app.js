@@ -33,7 +33,7 @@
   var standardLead = D.indicators.filter(function (x) { return x.group === "선행" && x.standard && x.score; }).map(function (x) { return x.id; });
 
   // ---------- 상태(브라우저에 가볍게 기억) ----------
-  var state = { chart: "nasdaq", open: { "경제지표": true, "경제지표/선행": true, "유동성 지표": true, "주도 섹터 (AI)": true, "주도 섹터 (AI)/자금조달": true, "가격·심리": true, "가격·심리/가격 수준": true, "가격·심리/심리": true }, checked: {}, hidden: {} };
+  var state = { chart: "nasdaq", open: { "경제지표": true, "경제지표/선행": true, "유동성 지표": true, "주도 섹터 (AI)": true, "주도 섹터 (AI)/자금조달": true, "가격·심리": true, "가격·심리/가격 수준": true, "가격·심리/심리": true }, checked: {}, hidden: {}, boardOpen: {}, boardAll: false };
   standardLead.forEach(function (id) { state.checked[id] = true; });
   try {
     var saved = JSON.parse(localStorage.getItem("bigcycle-state") || "null");
@@ -43,6 +43,8 @@
       if (saved.hidden) Object.keys(saved.hidden).forEach(function (id) { if (saved.hidden[id] && state.checked[id]) state.hidden[id] = true; });
       if (saved.chart === "sp500" && D.prices.sp500) state.chart = "sp500";
       if (saved.panelOpen === false) state.panelOpen = false;
+      if (saved.boardAll) state.boardAll = true;
+      if (saved.boardOpen && typeof saved.boardOpen === "object") state.boardOpen = saved.boardOpen;
     }
   } catch (e) { /* 저장소를 못 쓰는 환경이면 기억하지 않는다 */ }
   var save = function () { try { localStorage.setItem("bigcycle-state", JSON.stringify(state)); } catch (e) { /* 무시 */ } };
@@ -98,13 +100,30 @@
     var age = (Date.now() - Date.parse(x.latest.newOn)) / 86400000;
     return age >= -1 && age <= (D.rules.newDays || 7);
   }
+  // 일정 한 줄: 이름(누르면 목록으로 이동) + 펼침 버튼. 펼치면 예측·직전·실제 수치가 이름 아래에 나온다.
+  function boardItem(x, dateKey) {
+    var k = dateKey + "/" + x.id, open = state.boardAll ? state.boardOpen[k] !== false : !!state.boardOpen[k];
+    var l = x.latest || {}, out = isNew(x);
+    var num = function (v) { return v === null || v === undefined ? "—" : fmt(v, 2) + esc(l.unit || ""); };
+    var html = '<div class="bitem"><div class="brow"><button type="button" class="bname" data-go="' + esc(x.id) + '">' + esc(x.name) + (out ? '<span class="bdone">발표됨</span>' : "") + "</button>" +
+      '<button type="button" class="btog" data-tog="' + esc(k) + '" aria-expanded="' + open + '" aria-label="' + esc(x.name) + " 수치 " + (open ? "접기" : "펼치기") + '"><svg class="chev' + (open ? "" : " shut") + '" aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l4 4 4-4"></path></svg></button></div>';
+    if (open) {
+      var short = function (o) { return whenLabel(o).replace(/^\d{4}년 /, ""); };
+      var prevV = out ? l.prevValue : l.value, prevW = out ? (l.prevMonth ? short({ month: l.prevMonth, freq: l.freq }) : "") : short(l);
+      html += '<dl class="bnum"><dt class="bkind">' + esc(x.transform || "값") + "</dt><dd></dd>" +
+        "<dt>직전</dt><dd>" + num(prevV) + (prevW ? ' <span class="bwhen">' + esc(prevW) + "</span>" : "") + "</dd>" +
+        '<dt class="bact">실제</dt><dd class="bact">' + (out ? num(l.value) + ' <span class="bwhen">' + esc(short(l)) + "</span>" : '<span class="bwait">발표 전</span>') + "</dd></dl>";
+    }
+    return html + "</div>";
+  }
   // 이번 주 발표 일정. 주는 화면을 여는 날짜를 기준으로 월요일부터 잡는다.
   function renderBoard() {
     var box = $("board"), sc = D.schedule, pad = function (n) { return String(n).padStart(2, "0"); };
     var iso = function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
     var now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var mon = new Date(today); mon.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-    var head = '<div class="board-head"><h2>이번 주 발표 일정</h2><p class="muted">' + (sc && sc.fetched ? "미국 현지 날짜 기준 · 일정 확인 " + esc(sc.fetched.slice(0, 10)) : "") + "</p></div>";
+    var allOpen = !!state.boardAll;
+    var head = '<div class="board-head"><h2>이번 주 발표 일정</h2><button type="button" class="ball" data-all="1" aria-pressed="' + allOpen + '">' + (allOpen ? "수치 모두 접기" : "수치 모두 펼치기") + '</button><p class="muted">' + (sc && sc.fetched ? "미국 현지 날짜 기준 · 일정 확인 " + esc(sc.fetched.slice(0, 10)) : "") + "</p></div>";
     if (!sc || !sc.items) { box.innerHTML = head + '<p class="board-msg">발표 일정을 아직 받지 못했습니다. FRED 키를 넣고 자료를 만들면 표시됩니다.</p>'; return; }
     var byDate = {};
     sc.items.forEach(function (it) { var a = byDate[it.date] || (byDate[it.date] = []); it.ids.forEach(function (id) { if (byId[id] && a.indexOf(id) < 0) a.push(id); }); });
@@ -116,7 +135,7 @@
       total += ids.length;
       var cls = key === tIso ? " today" : key < tIso ? " past" : "";
       cols += '<div class="bday' + cls + (ids.length ? "" : " empty") + '"><h3>' + names[i] + " " + (d.getMonth() + 1) + "/" + d.getDate() + (key === tIso ? " · 오늘" : "") + "</h3>" +
-        (ids.length ? ids.map(function (id) { var x = byId[id]; return '<button type="button" data-go="' + esc(id) + '">' + esc(x.name) + (isNew(x) ? '<span class="bdone">발표됨</span>' : "") + "</button>"; }).join("") : '<p class="muted">—</p>') + "</div>";
+        (ids.length ? ids.map(function (id) { return boardItem(byId[id], key); }).join("") : '<p class="muted">—</p>') + "</div>";
     }
     var stale = sc.to && tIso > sc.to;
     box.innerHTML = head + (stale ? '<p class="board-msg">받아둔 일정이 오래됐습니다. 자료를 갱신하면 이번 주 일정이 표시됩니다.</p>'
@@ -479,7 +498,15 @@
       var again = document.querySelector('#chips button[data-eye="' + id.replace(/"/g, '\\"') + '"]'); if (again) again.focus();
     } else if (go) jumpTo(go.getAttribute("data-go"));
   });
-  $("board").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-go]"); if (b) jumpTo(b.getAttribute("data-go")); });
+  $("board").addEventListener("click", function (ev) {
+    var go = ev.target.closest("button[data-go]"), tog = ev.target.closest("button[data-tog]"), all = ev.target.closest("button[data-all]");
+    if (go) { jumpTo(go.getAttribute("data-go")); return; }
+    if (tog) {
+      var k = tog.getAttribute("data-tog"), cur = state.boardAll ? state.boardOpen[k] !== false : !!state.boardOpen[k];
+      state.boardOpen[k] = !cur; save(); renderBoard();
+      var again = document.querySelector('#board button[data-tog="' + k.replace(/"/g, '\\"') + '"]'); if (again) again.focus();
+    } else if (all) { state.boardAll = !state.boardAll; state.boardOpen = {}; save(); renderBoard(); var b2 = document.querySelector("#board button[data-all]"); if (b2) b2.focus(); }
+  });
   $("news").addEventListener("click", function (ev) { var b = ev.target.closest("button[data-go]"); if (b) jumpTo(b.getAttribute("data-go")); });
   $("btn-nasdaq").addEventListener("click", function () { state.chart = "nasdaq"; save(); renderChart(); renderRecord(); });
   $("btn-sp500").addEventListener("click", function () { if (!D.prices.sp500) return; state.chart = "sp500"; save(); renderChart(); renderRecord(); });

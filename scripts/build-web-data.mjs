@@ -189,7 +189,7 @@ async function main() {
     const valid = raw[id].filter(([, v]) => v !== "." && v !== "" && Number.isFinite(Number(v)));
     const lastDate = valid.length ? new Date(valid[valid.length - 1][0]) : null;
     const cnt = lastDate ? valid.filter(([d]) => (lastDate - new Date(d)) / 86400000 <= 365).length : 0;
-    return { id, last, cnt };
+    return { id, last, cnt, lastDate: valid.length ? valid[valid.length - 1][0] : null };
   };
   const realInfo = (ids) => {
     const infos = ids.filter((id) => monthly[id] && raw[id] && !fillZero.includes(id)).map(seriesInfo);
@@ -198,9 +198,9 @@ async function main() {
     const freq = d.cnt >= 40 ? "D" : d.cnt <= 5 ? "Q" : "M";
     let m0 = null;
     for (const k of monthly[d.id].keys()) if (k < d.last && (m0 === null || k > m0)) m0 = k;
-    return { m1: d.last, m0, freq, partial: freq === "D" && d.last === genMonth };
+    return { m1: d.last, m0, freq, partial: freq === "D" && d.last === genMonth, daily: d.cnt >= 150, lastDate: d.lastDate };
   };
-  const whenOf = (info, li) => (info ? { month: ymStr(Math.min(info.m1, M0 + li)), freq: info.freq, partial: info.partial, prevMonth: info.m0 === null ? null : ymStr(info.m0) } : { month: ymStr(M0 + li), freq: "M", partial: false, prevMonth: null });
+  const whenOf = (info, li) => (info ? { month: ymStr(Math.min(info.m1, M0 + li)), freq: info.freq, partial: info.partial, daily: !!info.daily, lastDate: info.lastDate ?? null, prevMonth: info.m0 === null ? null : ymStr(info.m0) } : { month: ymStr(M0 + li), freq: "M", partial: false, prevMonth: null });
   const deltaOf = (sc, info) => {
     if (!info || info.m0 === null) return null;
     const a = lastIdxOf(sc), b = info.m0 - M0;
@@ -217,7 +217,7 @@ async function main() {
       const vals = transform(combined, ind.tf);
       const li = lastIdxOf(vals);
       const info = realInfo(ind.calc.ids);
-      if (li >= 0) out.latest = { value: r2(vals[li]), ...whenOf(info, li) };
+      if (li >= 0) out.latest = { value: r2(vals[li]), ...whenOf(info, li), prevValue: info && info.m0 !== null && info.m0 - M0 >= 0 && vals[info.m0 - M0] != null ? r2(vals[info.m0 - M0]) : null };
       const fi = vals.findIndex((v) => v !== null);
       if (fi >= 0) out.start = ymStr(M0 + fi);
       if (ind.role !== "display") {
@@ -241,7 +241,7 @@ async function main() {
     const sc = pctFull.map((v) => (v === null ? null : 100 - v));   // 비쌀수록·공포가 클수록 점수가 낮다
     fullScores[id] = sc;
     priceInds.push({ id, name, category: "가격·심리", group, stars: null, standard: false, role: "level", formula, transform: "수준", series, source,
-      score: cut(sc, r1), latest: { value: r2(arr[li]), ...whenOf(info, li), unit }, start: ymStr(M0 + fi),
+      score: cut(sc, r1), latest: { value: r2(arr[li]), ...whenOf(info, li), prevValue: info && info.m0 !== null && info.m0 - M0 >= 0 && arr[info.m0 - M0] != null ? r2(arr[info.m0 - M0]) : null, unit }, start: ymStr(M0 + fi),
       pctFull: r1(pctFull[li]), pct20: r1(pct20[li]), note: "" });
   };
   if (shiller) addPrice("cape", "실러 PER", "가격 수준", toArray(shiller.cape, M0, M1, 3), "배", [], "로버트 실러 교수 공개 자료", "CAPE", (() => { const ks = [...shiller.cape.keys()].sort((a, b) => a - b); return { m1: ks[ks.length - 1], m0: ks.length > 1 ? ks[ks.length - 2] : null, freq: "M", partial: false }; })());
@@ -258,13 +258,16 @@ async function main() {
   if (await exists(stateFile)) { try { relState = JSON.parse(await readFile(stateFile, "utf8")); } catch { relState = {}; } }
   const today = new Date().toISOString().slice(0, 10);
   for (const x of [...indicators, ...priceInds]) {
-    if (!x.latest || x.latest.freq === "D") continue;
-    const prev = relState[x.id];
-    if (!prev) relState[x.id] = { obs: x.latest.month, seen: null };
-    else if (prev.obs !== x.latest.month) relState[x.id] = { obs: x.latest.month, seen: today };
+    if (!x.latest || x.latest.daily) continue;   // 매일 나오는 지표만 제외. 주간·월간·분기 지표는 새 자료가 들어온 날을 기록한다
+    const obs = x.latest.lastDate ?? x.latest.month, prev = relState[x.id];
+    if (!prev) relState[x.id] = { obs, seen: null };
+    else if (prev.obs !== obs) relState[x.id] = { obs, seen: prev.obs.length === 7 && obs.startsWith(prev.obs) ? prev.seen : today };   // 예전 기록(달만 적힌 것)은 날짜 형식으로 바꾸기만 한다
     x.latest.newOn = relState[x.id].seen;
   }
   await writeFile(stateFile, JSON.stringify(relState, null, 1), "utf8");
+
+  // 예측치: 자동으로 받는 곳이 없어, data/manual/forecasts.json 에 적어 둔 것이 있으면 그대로 싣는다
+  const forecasts = await readJson(join(MANUAL_DIR, "forecasts.json"), null);
 
   // 4-3. 이번 주 발표 일정
   const schedule = await buildSchedule([...indicators, ...priceInds], apiKey);
@@ -338,7 +341,7 @@ async function main() {
     generated: new Date().toISOString(), configVersion: config.version, start: ymStr(M0 + S0), months: N, backtestStartIndex: bt0,
     rules: { threshold: TH, minMonths: MIN, window: W, newDays: 7 },
     prices: { nasdaq, sp500 }, usrec: cut(usrec, (v) => (v === 1 ? 1 : 0)), recessions: recs,
-    indicators: [...indicators, ...priceInds], groupNow, alert, nfci, sector, schedule, notes,
+    indicators: [...indicators, ...priceInds], groupNow, alert, nfci, sector, schedule, forecasts, notes,
   };
   await writeFile(OUT_FILE, "// 자동 생성 파일. 직접 고치지 않는다. 만든 시각: " + data.generated + "\nwindow.BC_DATA = " + JSON.stringify(data) + ";\n", "utf8");
 

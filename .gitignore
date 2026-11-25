@@ -17,6 +17,7 @@
 /data/manual/*
 !/data/manual/shiller.csv
 !/data/manual/shiller-source.txt
+!/data/manual/forecasts.json
 !/data/state/
 
 # 화면이 읽는 자료 파일은 깃허브가 매번 새로 만든다
