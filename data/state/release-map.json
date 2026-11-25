@@ -158,5 +158,9 @@
  "VIXCLS": {
   "id": 200,
   "name": "CBOE Market Statistics"
+ },
+ "SP500": {
+  "id": 189,
+  "name": "Standard & Poors"
  }
 }
