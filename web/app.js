@@ -638,6 +638,14 @@
     var row = function (x, cur) { return "<tr" + (cur ? ' class="cur"' : "") + '><td>' + esc(x.name) + (cur ? " (지금)" : "") + '</td><td class="num">' + (x.share === null ? "—" : fmt(x.share, 0) + "%") + '</td><td class="num">' + spct(x.mean) + '</td><td class="num">' + (x.neg === null ? "—" : fmt(x.neg, 0) + "%") + '</td><td class="num">' + (x.n || 0) + "</td></tr>"; };
     var head = function (t) { return '<tr><th scope="col">' + t + '</th><th scope="col" class="num">기간 비율</th><th scope="col" class="num">이후 1년 나스닥</th><th scope="col" class="num">손실 확률</th><th scope="col" class="num">개월 수</th></tr>'; };
     var nowPh = PH_NAME[String(Q.now.phase)];
+    // 제목과 읽는 법(물음표에 마우스를 올리거나 누르면 보인다)
+    var totalM = Q.stats.reduce(function (t, x) { return t + (x.n || 0); }, 0), yrs = Math.round(totalM / 12), cur = Q.stats.filter(function (x) { return x.name === Q.now.q; })[0];
+    $("quad-rec-title").textContent = yrs + "년 각 부문 성적";
+    $("quad-help").innerHTML = "<h4>이 표 읽는 법</h4><p>" + monthStr(BT0).slice(0, 4) + "년부터 약 " + yrs + "년의 모든 달을 그때의 상태별로 묶고, 그 달에 나스닥을 샀다면 1년 뒤 어땠는지를 평균 낸 표입니다.</p>" +
+      "<dl><dt>기간 비율</dt><dd>" + yrs + "년 중 그 상태였던 달의 비율</dd><dt>이후 1년 나스닥</dt><dd>그 상태였던 달들의 1년 뒤 수익률 평균</dd><dt>손실 확률</dt><dd>1년 뒤 손해였던 달의 비율</dd><dt>개월 수</dt><dd>계산에 들어간 달의 수</dd><dt>주황색 줄</dt><dd>지금 해당하는 상태</dd></dl>" +
+      "<p>표는 세 가지 기준으로 나뉩니다. 위는 사분면의 네 칸(경기와 유동성), 가운데는 기준금리가 오르는지 내리는지, 아래는 경기와 금리를 함께 본 것입니다.</p>" +
+      (cur ? '<p class="eg">예: 지금은 <strong>' + esc(cur.name) + "</strong>입니다. 과거에 이 상태였던 " + cur.n + "개월은 1년 뒤 평균 " + spct(cur.mean) + "였고, 100번 중 " + fmt(cur.neg, 0) + "번은 손해였습니다.</p>" : "") +
+      "<p>평균일 뿐이라 이번에도 그렇다는 뜻은 아닙니다. 사고팔 신호로 쓰지 마세요.</p>";
     $("quad-table").innerHTML = "<thead>" + head("칸") + "</thead><tbody>" + Q.stats.map(function (x) { return row(x, x.name === Q.now.q); }).join("") + "</tbody>" +
       "<thead>" + head("기준금리 국면") + "</thead><tbody>" + Q.phaseStats.map(function (x) { return row(x, x.name === nowPh); }).join("") + "</tbody>" +
       "<thead>" + head("경기와 금리 조합") + "</thead><tbody>" + Q.combo.map(function (x) { return row(x, false); }).join("") + "</tbody>";
@@ -649,6 +657,12 @@
   }
   Array.prototype.forEach.call(document.querySelectorAll("[data-qrange]"), function (b) { b.addEventListener("click", function () { quadStop(true); state.quadRange = Number(b.getAttribute("data-qrange")); save(); renderQuad(); }); });
   $("quad-play").addEventListener("click", quadPlay);
+  // 물음표: 마우스를 올리면 보이고, 누르면 고정(휴대폰용). 바깥을 누르거나 Esc 를 누르면 닫힌다.
+  (function () { var w = $("quad-help-wrap"), b = $("quad-help-btn"); if (!w || !b) return;
+    var set = function (on) { w.classList.toggle("open", on); b.setAttribute("aria-expanded", String(on)); };
+    b.addEventListener("click", function (e) { e.stopPropagation(); set(!w.classList.contains("open")); });
+    document.addEventListener("click", function (e) { if (!w.contains(e.target)) set(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") { set(false); b.blur(); } }); })();
   $("quad-seek").addEventListener("input", function () { quadStop(false); var v = Number(this.value); qCur = Q && Q.now && v >= Q.now.index ? null : v; renderQuad(); });
   if (Q && Q.now) { if (window.ResizeObserver) new ResizeObserver(function () { renderQuad(); }).observe($("quad-card")); else window.addEventListener("resize", renderQuad); }
 

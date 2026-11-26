@@ -111,6 +111,14 @@ body.panel-closed aside { opacity: 0; visibility: hidden; border-color: transpar
 .qrate-head h3, .qrec h3 { font-size: 14px; font-weight: 700; } .qrate-head p { font-size: 12px; }
 #quad-rate, #quad-fis { padding: 4px 12px 12px; } #quad-fis:empty { display: none; }
 .qrec { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 20px; border-top: 1px solid var(--line); }
+.qhead { position: relative; display: flex; align-items: center; gap: 10px; }
+.help { display: inline-flex; }
+.qhelp { width: 22px; height: 22px; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: transparent; color: var(--text-2); font-size: 12px; font-weight: 700; line-height: 1; cursor: help; }
+.qhelp:hover, .qhelp:focus-visible, .help.open .qhelp { color: var(--ground); background: var(--text); border-color: var(--text); }
+.qtip { display: none; position: absolute; left: 0; top: 32px; z-index: 30; width: min(460px, 100%); padding: 16px 18px; background: #1B1E24; border: 1px solid var(--line-strong); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); font-size: 13px; line-height: 1.65; color: var(--text); font-weight: 400; }
+.help:hover .qtip, .help:focus-within .qtip, .help.open .qtip { display: block; }
+.qtip h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; } .qtip dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 10px 0; }
+.qtip dt { color: var(--text-2); white-space: nowrap; } .qtip dd { margin: 0; } .qtip p + p { margin-top: 8px; } .qtip .eg { padding-top: 10px; border-top: 1px solid var(--line-strong); }
 #quad-table td.num, #quad-table th.num { text-align: right; font-family: var(--mono); } #quad-table tr.cur td { color: var(--accent); }
 .scroll-x { overflow-x: auto; }
 table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 14px; }
@@ -239,7 +247,7 @@ details summary { cursor: pointer; min-height: 32px; }
 <div class="qrate-head" id="quad-fis-head" hidden><h3>정부 재정적자 / GDP</h3><p class="muted" id="quad-fis-sub"></p></div>
 <div id="quad-fis"></div>
 <div class="qrec">
-<h3>칸별 과거 성적</h3>
+<div class="qhead"><h3 id="quad-rec-title">각 부문 성적</h3><span class="help" id="quad-help-wrap"><button type="button" class="qhelp" id="quad-help-btn" aria-describedby="quad-help" aria-label="표 읽는 법" aria-expanded="false">?</button><div role="tooltip" id="quad-help" class="qtip"></div></span></div>
 <div class="scroll-x"><table id="quad-table"></table></div>
 <p style="font-size:14px;color:var(--text-2)" id="quad-cases"></p>
 <p style="font-size:14px;color:var(--text-2)" id="quad-fiscal" hidden></p>
