@@ -708,8 +708,11 @@
   if (narrow.addEventListener) narrow.addEventListener("change", function () { setPanel(narrow.matches ? false : state.panelOpen !== false, false); });
   setPanel(panelOpen, false);
 
-  $("asof").textContent = "기준 " + monthStr(LAST) + " · 자료 생성 " + D.generated.slice(0, 10);
-  $("gen").textContent = "자료 생성 시각: " + D.generated.replace("T", " ").slice(0, 16) + " (UTC) · 설정 파일 버전 " + D.configVersion + " · 최근 한두 달은 일부 지표가 발표 전이라 직전 값을 이어 쓴 것입니다.";
+  // 자료 생성 시각은 보는 사람의 시간대로 바꿔서 보여 준다(자료에는 세계 표준시로 적혀 있다)
+  var genLocal = (function () { var d = new Date(D.generated); if (isNaN(d)) return D.generated.replace("T", " ").slice(0, 16); var p2 = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); })();
+  $("asof").textContent = "기준 " + monthStr(LAST) + " · 자료 생성 " + genLocal;
+  $("gen").textContent = "자료 생성 시각: " + genLocal + " (이 기기의 시간대) · 설정 파일 버전 " + D.configVersion + " · 최근 한두 달은 일부 지표가 발표 전이라 직전 값을 이어 쓴 것입니다.";
   if (D.notes && D.notes.length) { $("notes-box").hidden = false; $("notes").innerHTML = D.notes.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join(""); }
   renderAll();
 })();
