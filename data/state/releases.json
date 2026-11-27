@@ -100,16 +100,16 @@
   "seen": "2026-11-25"
  },
  "fed_net_liquidity": {
-  "obs": "2026-11-18",
-  "seen": null
+  "obs": "2026-11-25",
+  "seen": "2026-11-27"
  },
  "reserve_balances": {
-  "obs": "2026-11-18",
-  "seen": null
+  "obs": "2026-11-25",
+  "seen": "2026-11-27"
  },
  "bank_credit": {
-  "obs": "2026-11-11",
-  "seen": null
+  "obs": "2026-11-18",
+  "seen": "2026-11-27"
  },
  "fiscal_deficit": {
   "obs": "2026-10-01",
